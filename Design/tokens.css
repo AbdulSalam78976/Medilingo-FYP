@@ -1,0 +1,86 @@
+/* Medlingo design tokens — clinical minimal */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Brand */
+  --ml-blue: #1A5F7A;
+  --ml-blue-700: #144B61;
+  --ml-blue-50: #EAF3F7;
+  --ml-teal: #00B4D8;
+  --ml-teal-600: #0092B0;
+  --ml-teal-50: #E0F7FC;
+  --ml-green: #06A77D;
+  --ml-green-50: #E5F6F1;
+  --ml-amber: #B07A2B;
+  --ml-amber-50: #F8F0E2;
+  --ml-red: #C2483B;
+
+  /* Surfaces */
+  --ml-bg: #FAFAF7;
+  --ml-paper: #FFFFFF;
+  --ml-paper-2: #F4F4EE;
+  --ml-line: #E7E5DE;
+  --ml-line-2: #EFEDE6;
+  --ml-line-strong: #D6D3CA;
+
+  /* Ink */
+  --ml-ink: #14171C;
+  --ml-ink-2: #2E3540;
+  --ml-ink-3: #5A6373;
+  --ml-ink-4: #8A93A1;
+  --ml-ink-5: #B4BAC4;
+
+  /* Type */
+  --ml-display: 'Instrument Sans', 'Söhne', system-ui, sans-serif;
+  --ml-sans: 'Geist', 'Inter', system-ui, sans-serif;
+  --ml-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --ml-urdu: 'Noto Naskh Arabic', serif;
+
+  /* Radii */
+  --ml-r-xs: 6px;
+  --ml-r-sm: 8px;
+  --ml-r-md: 10px;
+  --ml-r-lg: 14px;
+  --ml-r-pill: 999px;
+}
+
+/* Reset scoped to artboards */
+.ml * { box-sizing: border-box; }
+.ml { font-family: var(--ml-sans); color: var(--ml-ink); background: var(--ml-bg); }
+.ml [dir="rtl"], .ml .ur { font-family: var(--ml-urdu); }
+
+/* Common helpers */
+.ml-mono { font-family: var(--ml-mono); font-feature-settings: 'tnum'; }
+.ml-display { font-family: var(--ml-display); letter-spacing: -0.02em; }
+.ml-kicker { font-family: var(--ml-mono); text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; color: var(--ml-ink-3); }
+.ml-card { background: var(--ml-paper); border: 1px solid var(--ml-line); border-radius: var(--ml-r-lg); }
+.ml-divider { height: 1px; background: var(--ml-line); }
+
+/* Buttons */
+.ml-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--ml-r-md); font-family: var(--ml-sans); font-weight: 500; font-size: 14px; line-height: 1; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+.ml-btn-primary { background: var(--ml-blue); color: #fff; border-color: var(--ml-blue); }
+.ml-btn-primary:hover { background: var(--ml-blue-700); }
+.ml-btn-ghost { background: transparent; color: var(--ml-ink-2); border-color: var(--ml-line-strong); }
+.ml-btn-ghost:hover { background: var(--ml-paper); }
+.ml-btn-quiet { background: transparent; color: var(--ml-ink-3); border-color: transparent; }
+.ml-btn-quiet:hover { color: var(--ml-ink); background: var(--ml-paper); }
+.ml-btn-lg { padding: 14px 22px; font-size: 15px; border-radius: 12px; }
+
+/* Pills */
+.ml-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--ml-r-pill); font-size: 12px; font-weight: 500; border: 1px solid var(--ml-line-strong); color: var(--ml-ink-3); background: transparent; }
+.ml-pill[data-active="true"] { background: var(--ml-ink); color: #fff; border-color: var(--ml-ink); }
+.ml-pill-blue { background: var(--ml-blue-50); color: var(--ml-blue); border-color: transparent; }
+.ml-pill-teal { background: var(--ml-teal-50); color: var(--ml-teal-600); border-color: transparent; }
+.ml-pill-green { background: var(--ml-green-50); color: var(--ml-green); border-color: transparent; }
+.ml-pill-amber { background: var(--ml-amber-50); color: var(--ml-amber); border-color: transparent; }
+
+/* Inputs */
+.ml-input { width: 100%; padding: 12px 14px; border: 1px solid var(--ml-line-strong); border-radius: var(--ml-r-md); font: inherit; color: var(--ml-ink); background: var(--ml-paper); }
+.ml-input:focus { outline: 2px solid var(--ml-teal); outline-offset: -1px; border-color: var(--ml-teal); }
+
+/* Dot */
+.ml-dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; background: currentColor; }
+
+/* Subtle status indicator */
+.ml-livedot { width: 8px; height: 8px; border-radius: 999px; background: var(--ml-green); box-shadow: 0 0 0 3px var(--ml-green-50); display: inline-block; }

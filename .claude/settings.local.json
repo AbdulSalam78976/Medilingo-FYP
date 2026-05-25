@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /mnt/d/UNI/medlingo-ai/medlingo-frontend/src -type f 2>/dev/null | sort)",
+      "Read(//mnt/d/UNI/medlingo-ai/medlingo-frontend/**)",
+      "Bash(npx tsc *)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\UNI\\\\medlingo-ai\" -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -Property FullName | ForEach-Object { $_.FullName })",
+      "Bash(grep -E '\\\\.\\(py|json|md|txt|yml|js|ts|tsx\\)$')",
+      "PowerShell(Get-ChildItem \"d:\\\\UNI\\\\medlingo-ai\" -Recurse -Depth 3 | Where-Object { $_.Name -match \"Copy|test_chroma|SYSTEM_READY|BUILD_SUMMARY|QUICKSTART|colab|\\\\.hypothesis|\\\\.pytest_cache\" } | Select-Object FullName, Length)",
+      "PowerShell(Get-ChildItem \"d:\\\\UNI\\\\medlingo-ai\\\\backend\" -Recurse | Where-Object { $_.Name -eq \"test_chroma\" -or $_.FullName -match \"test_chroma\" } | Select-Object FullName)",
+      "Bash(npm run *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

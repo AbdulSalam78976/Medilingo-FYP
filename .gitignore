@@ -1,0 +1,64 @@
+# ── Python / Backend ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment files (contain secrets — never commit these)
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Pytest / coverage
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── ML / Data artifacts ──────────────────────────────────────────────────────
+# Vector store (large binary — regenerate with POST /pipeline/ingest-sync)
+backend/vectorstore/
+backend/processed_data/
+backend/test_chroma/
+
+# Medical PDFs (large — add your own to backend/datasets/)
+backend/datasets/
+!backend/datasets/.gitkeep
+
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+medlingo-frontend/node_modules/
+medlingo-frontend/dist/
+medlingo-frontend/.vite/
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.idea/
+*.sublime-workspace
+*.swp
+*.swo
+.vscode/settings.json
+.vscode/launch.json
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.tmp
+*.bak

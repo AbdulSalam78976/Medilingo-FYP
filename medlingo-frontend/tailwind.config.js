@@ -1,0 +1,122 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        bg:            'rgb(var(--color-bg) / <alpha-value>)',
+        paper:         'rgb(var(--color-paper) / <alpha-value>)',
+        'paper-2':     'rgb(var(--color-paper-2) / <alpha-value>)',
+        line:          'rgb(var(--color-line) / <alpha-value>)',
+        'line-2':      'rgb(var(--color-line-2) / <alpha-value>)',
+        'line-strong': 'rgb(var(--color-line-strong) / <alpha-value>)',
+        ink:           'rgb(var(--color-ink) / <alpha-value>)',
+        'ink-2':       'rgb(var(--color-ink-2) / <alpha-value>)',
+        'ink-3':       'rgb(var(--color-ink-3) / <alpha-value>)',
+        'ink-4':       'rgb(var(--color-ink-4) / <alpha-value>)',
+        'ink-5':       'rgb(var(--color-ink-5) / <alpha-value>)',
+        blue: {
+          DEFAULT: 'rgb(var(--color-blue) / <alpha-value>)',
+          700:     'rgb(var(--color-blue-700) / <alpha-value>)',
+          50:      'rgb(var(--color-blue-50) / <alpha-value>)',
+        },
+        teal: {
+          DEFAULT: 'rgb(var(--color-teal) / <alpha-value>)',
+          600:     'rgb(var(--color-teal-600) / <alpha-value>)',
+          50:      'rgb(var(--color-teal-50) / <alpha-value>)',
+        },
+        green: {
+          DEFAULT: 'rgb(var(--color-green) / <alpha-value>)',
+          50:      'rgb(var(--color-green-50) / <alpha-value>)',
+        },
+        amber: {
+          DEFAULT: 'rgb(var(--color-amber) / <alpha-value>)',
+          50:      'rgb(var(--color-amber-50) / <alpha-value>)',
+        },
+        danger: 'rgb(var(--color-danger) / <alpha-value>)',
+      },
+      fontFamily: {
+        display: ['"Instrument Sans"', 'system-ui', 'sans-serif'],
+        sans:    ['"Geist"', 'Inter', 'system-ui', 'sans-serif'],
+        mono:    ['"Geist Mono"', '"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        urdu:    ['"Noto Naskh Arabic"', 'serif'],
+      },
+      borderRadius: {
+        xs:   '6px',
+        sm:   '8px',
+        md:   '10px',
+        lg:   '14px',
+        pill: '999px',
+      },
+      boxShadow: {
+        card:         '0 1px 3px rgba(20,23,28,0.07), 0 1px 0 rgba(20,23,28,0.03)',
+        'card-raised': '0 4px 16px rgba(20,23,28,0.10), 0 1px 0 rgba(20,23,28,0.04)',
+        browser:      '0 24px 60px -28px rgba(20,30,40,0.18), 0 2px 6px rgba(20,30,40,0.04)',
+      },
+      animation: {
+        'fade-in':        'fadeIn .18s ease',
+        'slide-up':       'slideUp .18s ease',
+        'slide-in':       'slideIn .22s ease',
+        'slide-in-right': 'slideInRight .22s ease',
+        'pulse-dot':      'pulseDot 1.4s ease-in-out infinite',
+        'float':          'float 4s ease-in-out infinite',
+        'float-slow':     'float 6s ease-in-out infinite',
+        'float-delay':    'float 4s ease-in-out 2s infinite',
+        'float-delay2':   'float 5s ease-in-out 1s infinite',
+        'spin-slow':      'spin 9s linear infinite',
+        'spin-reverse':   'spinReverse 11s linear infinite',
+        'glow-pulse':     'glowPulse 2.4s ease-in-out infinite',
+        'heartbeat':      'heartbeat 1.6s ease-in-out infinite',
+        'ecg-draw':       'ecgDraw 2.5s linear infinite',
+        'orbit':          'orbit 8s linear infinite',
+        'orbit-reverse':  'orbit 6s linear infinite reverse',
+        'fade-up':        'fadeUp .6s ease forwards',
+        'scale-in':       'scaleIn .2s ease',
+      },
+      keyframes: {
+        fadeIn:       { from: { opacity: 0 }, to: { opacity: 1 } },
+        slideUp:      { from: { opacity: 0, transform: 'translateY(8px)' }, to: { opacity: 1, transform: 'none' } },
+        slideIn:      { from: { opacity: 0, transform: 'translateX(-12px)' }, to: { opacity: 1, transform: 'none' } },
+        slideInRight: { from: { opacity: 0, transform: 'translateX(12px)' }, to: { opacity: 1, transform: 'none' } },
+        pulseDot:     { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.35 } },
+        float: {
+          '0%,100%': { transform: 'translateY(0px)' },
+          '50%':     { transform: 'translateY(-14px)' },
+        },
+        spinReverse: {
+          from: { transform: 'rotate(0deg)' },
+          to:   { transform: 'rotate(-360deg)' },
+        },
+        glowPulse: {
+          '0%,100%': { boxShadow: '0 0 0 0 rgba(26,95,122,0.25)' },
+          '50%':     { boxShadow: '0 0 0 18px rgba(26,95,122,0)' },
+        },
+        heartbeat: {
+          '0%,100%': { transform: 'scale(1)' },
+          '14%':     { transform: 'scale(1.13)' },
+          '28%':     { transform: 'scale(1)' },
+          '42%':     { transform: 'scale(1.07)' },
+          '56%':     { transform: 'scale(1)' },
+        },
+        ecgDraw: {
+          '0%':   { strokeDashoffset: '600' },
+          '100%': { strokeDashoffset: '0' },
+        },
+        orbit: {
+          from: { transform: 'rotate(0deg) translateX(52px) rotate(0deg)' },
+          to:   { transform: 'rotate(360deg) translateX(52px) rotate(-360deg)' },
+        },
+        fadeUp: {
+          from: { opacity: 0, transform: 'translateY(28px)' },
+          to:   { opacity: 1, transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          from: { opacity: 0, transform: 'scale(0.92)' },
+          to:   { opacity: 1, transform: 'scale(1)' },
+        },
+      },
+    },
+  },
+  plugins: [],
+};
