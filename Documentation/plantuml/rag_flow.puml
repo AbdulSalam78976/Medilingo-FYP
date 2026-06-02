@@ -1,0 +1,30 @@
+@startuml rag_flow
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam activity {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+  ArrowColor #0066B3
+  StartColor #002B5B
+  EndColor #002B5B
+}
+skinparam note {
+  BackgroundColor #EEF5FF
+  BorderColor #0066B3
+  FontColor #002B5B
+}
+
+start
+:Receive Query\n(prefixed with language instruction);
+:Strip Language Prefix\nextract clean medical question;
+:Generate Embedding\nall-MiniLM-L6-v2 → 384-dim vector;
+note right: sentence-transformers
+:Vector Search\nChromaDB cosine similarity, top-k chunks;
+note right: ChromaDB
+:Assemble Groq Prompt\nlanguage instruction + context + query;
+:Call LLM\nLLaMA 3.3-70b via Groq API;
+note right: Groq API (external)
+:Return Response\nin selected language;
+stop
+@enduml

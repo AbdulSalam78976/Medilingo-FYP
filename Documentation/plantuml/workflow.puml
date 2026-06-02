@@ -1,0 +1,25 @@
+@startuml workflow
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam activity {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+  ArrowColor #0066B3
+  StartColor #002B5B
+  EndColor #002B5B
+}
+
+start
+#002B5B:**User submits query in Language L**;
+:Frontend prepends language instruction\n//"Respond in [L]: [query text]"//;
+:POST /query to FastAPI backend;
+:Backend strips language prefix\n//clean_query = query without instruction//;
+:Embed clean_query with sentence-transformers\n//all-MiniLM-L6-v2 → 384-dim vector//;
+:Cosine similarity search in ChromaDB\nretrieve top-K relevant medical passages;
+:Build LLM prompt:\nlanguage instruction + retrieved passages + original query;
+:Groq LLaMA 3.3-70b generates response\nin Language L;
+:Save user message + assistant response\nto MongoDB session;
+#002B5B:**Response displayed to user**;
+stop
+@enduml

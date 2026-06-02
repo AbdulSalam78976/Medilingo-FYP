@@ -1,0 +1,34 @@
+@startuml ssd2_login
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-2: Login
+
+actor User
+participant "Frontend\n(React SPA)" as FE
+participant "FastAPI\nBackend" as API
+database "MongoDB" as DB
+
+User -> FE : enter email + password
+FE -> API : POST /auth/login
+API -> DB : findUser(email)
+DB --> API : UserDoc
+API -> API : verify bcrypt hash
+alt Credentials valid
+  API --> FE : 200 OK\n{ access_token }\n+ refresh cookie
+  FE -> FE : store token in Zustand
+  FE --> User : redirect to /chat
+else Invalid credentials
+  API --> FE : 401 Unauthorized
+  FE --> User : show error message
+end
+@enduml

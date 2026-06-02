@@ -1,0 +1,40 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Functional Requirements of MediLingo AI}}{20}{table.2.1}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Non-Functional Requirements of MediLingo AI}}{22}{table.2.2}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces User Use Cases}}{28}{table.caption.10}%
+\contentsline {table}{\numberline {2.4}{\ignorespaces Admin Use Cases}}{28}{table.caption.11}%
+\contentsline {table}{\numberline {2.5}{\ignorespaces UC-1: Register User Account}}{31}{table.caption.13}%
+\contentsline {table}{\numberline {2.6}{\ignorespaces UC-2: Login}}{32}{table.caption.14}%
+\contentsline {table}{\numberline {2.7}{\ignorespaces UC-3: Submit Medical Query}}{33}{table.caption.15}%
+\contentsline {table}{\numberline {2.8}{\ignorespaces UC-4: Manage Chat Sessions}}{34}{table.caption.16}%
+\contentsline {table}{\numberline {2.9}{\ignorespaces UC-5: Use Voice Input}}{35}{table.caption.17}%
+\contentsline {table}{\numberline {2.10}{\ignorespaces UC-6: Use Voice Output}}{36}{table.caption.18}%
+\contentsline {table}{\numberline {2.11}{\ignorespaces UC-7: Manage Profile}}{37}{table.caption.19}%
+\contentsline {table}{\numberline {2.12}{\ignorespaces UC-8: Reset Password}}{38}{table.caption.20}%
+\contentsline {table}{\numberline {2.13}{\ignorespaces UC-9: Manage Users (Admin)}}{39}{table.caption.21}%
+\contentsline {table}{\numberline {2.14}{\ignorespaces UC-10: Ingest Medical Documents (Admin)}}{40}{table.caption.22}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Requirements Traceability Matrix}}{53}{table.3.1}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Testing Environment}}{76}{table.caption.46}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces TC-01-1: Successful Registration}}{77}{table.caption.47}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces TC-01-2: Registration with Duplicate Email}}{78}{table.caption.48}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces TC-02-1: Successful Login}}{79}{table.caption.49}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces TC-02-2: Login with Wrong Password}}{80}{table.caption.50}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces TC-03-1: English Query}}{81}{table.caption.51}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces TC-03-2: Urdu Query}}{82}{table.caption.52}%
+\contentsline {table}{\numberline {4.8}{\ignorespaces TC-03-3: Roman Urdu Query}}{82}{table.caption.53}%
+\contentsline {table}{\numberline {4.9}{\ignorespaces TC-03-4: Query Without Ingested Documents}}{83}{table.caption.54}%
+\contentsline {table}{\numberline {4.10}{\ignorespaces TC-04-1: Voice Input in English}}{84}{table.caption.55}%
+\contentsline {table}{\numberline {4.11}{\ignorespaces TC-04-2: Microphone Permission Denied}}{85}{table.caption.56}%
+\contentsline {table}{\numberline {4.12}{\ignorespaces TC-05-1: Text-to-Speech Playback}}{85}{table.caption.57}%
+\contentsline {table}{\numberline {4.13}{\ignorespaces TC-06-1: Create a New Chat Session}}{86}{table.caption.58}%
+\contentsline {table}{\numberline {4.14}{\ignorespaces TC-07-1: Reload Previous Session After Page Refresh}}{87}{table.caption.59}%
+\contentsline {table}{\numberline {4.15}{\ignorespaces TC-08-1: Delete an Existing Session}}{88}{table.caption.60}%
+\contentsline {table}{\numberline {4.16}{\ignorespaces TC-08-2: Delete with Invalid Session ID}}{89}{table.caption.61}%
+\contentsline {table}{\numberline {4.17}{\ignorespaces TC-09-1: Admin Login with Valid Credentials}}{90}{table.caption.62}%
+\contentsline {table}{\numberline {4.18}{\ignorespaces TC-09-2: Regular User Cannot Access Admin Routes}}{91}{table.caption.63}%
+\contentsline {table}{\numberline {4.19}{\ignorespaces TC-10-1: Successful PDF Ingestion}}{92}{table.caption.64}%
+\contentsline {table}{\numberline {4.20}{\ignorespaces TC-10-2: Ingestion with Empty Datasets Folder}}{93}{table.caption.65}%
+\contentsline {table}{\numberline {4.21}{\ignorespaces Test Execution Summary}}{93}{table.4.21}%

@@ -44,26 +44,49 @@ def _build_history_messages(history: Optional[List[Dict]]) -> List[Dict]:
 
 
 def _build_system_prompt(lang_instruction: str) -> str:
-    if "urdu" in lang_instruction.lower() and "roman" not in lang_instruction.lower():
-        lang_name = "Urdu (Nastaliq/Arabic script)"
-    elif "roman" in lang_instruction.lower():
-        lang_name = "Roman Urdu (Latin script transliteration of Urdu)"
+    is_urdu = "urdu" in lang_instruction.lower() and "roman" not in lang_instruction.lower()
+    is_roman_urdu = "roman" in lang_instruction.lower()
+
+    if is_urdu:
+        lang_block = (
+            "LANGUAGE: Respond ENTIRELY in Urdu — Nastaliq script, right-to-left.\n"
+            "CRITICAL: This is URDU, not Hindi. They share the same script but are different languages.\n"
+            "  - Use Arabic/Persian vocabulary that Urdu speakers in Pakistan use:\n"
+            "    دوا (dawa), بیماری (bimari), صحت (sehat), علاج (ilaj), مریض (mareez),\n"
+            "    درد (dard), بخار (bukhar), خون (khoon), دماغ (dimagh), دل (dil)\n"
+            "  - Do NOT use Sanskrit-derived Hindi words like: روگ، سواستھیہ، اوپچار، اوشدھ\n"
+            "  - Every sentence must be natural Pakistani Urdu as spoken and written in Pakistan."
+        )
+    elif is_roman_urdu:
+        lang_block = (
+            "LANGUAGE: Respond ENTIRELY in Roman Urdu — Urdu words written in Latin/English script.\n"
+            "CRITICAL: This is Roman URDU (Pakistani), not Hindi transliteration.\n"
+            "  - Use Urdu vocabulary in Latin script:\n"
+            "    'dawa', 'bimari', 'sehat', 'ilaj', 'mareez', 'dard', 'bukhar', 'khoon', 'dimagh'\n"
+            "  - Do NOT use Hindi words: 'dawai', 'rog', 'swasthya', 'upchar', 'aushadh', 'vaid'\n"
+            "  - Write exactly as Pakistani Urdu speakers naturally type in SMS or chat.\n"
+            "  - Common Roman Urdu patterns: 'ap ko', 'hai', 'hoga', 'karna chahiye', 'zaroor'"
+        )
     else:
-        lang_name = "English"
+        lang_block = "LANGUAGE: Respond entirely in English."
 
     return f"""You are Medilingo — a knowledgeable, articulate medical AI assistant for users in Pakistan and South Asia.
 
-LANGUAGE: Always respond in {lang_name}. Match the user's script exactly.
+{lang_block}
 
 RESPONSE STYLE:
+- Answer DIRECTLY. Do NOT open with any preamble or intro sentence such as:
+  "Pehle yeh samajhna zaroori hai...", "Pehly ye jana zarori hai...", "Is sawal ka jawab dene se pehle...",
+  "Yeh ek ahem sawal hai...", "First, it is important to understand...", or any similar warm-up.
+  Your very first sentence must be the answer itself.
 - Write like a brilliant, trusted doctor friend — warm, clear, and confident.
 - Match length to the question: a simple question gets 1–3 crisp sentences; a complex topic gets thorough but tight coverage.
 - Never pad, hedge unnecessarily, or repeat yourself.
 - Use **bold** sparingly for critical terms or warnings only.
 - Use bullet points or numbered lists only when listing 3+ distinct items. Prose is preferred for most answers.
-- Never mention documents, sources, knowledge bases, or reference material. Do not cite. Do not say "based on the provided documents". Just answer directly as if from your own expertise.
+- Never mention documents, sources, knowledge bases, or reference material. Do not cite. Just answer directly as if from your own expertise.
 - Do not add a "Sources" section, footnotes, or any attribution at the end.
-- Do not start responses with "Certainly!", "Of course!", "Great question!" or similar filler phrases.
+- Do not start responses with "Certainly!", "Of course!", "Great question!", "Bilkul!", "Zaroor!", "Shukriya!", or similar filler phrases.
 
 ACCURACY:
 - Answer from authoritative medical knowledge. Be specific with mechanisms, causes, and treatments.
@@ -131,16 +154,25 @@ class BaseRAGEngine:
         return "\n".join(parts)
 
     def _create_prompt(self, clean_query: str, context: str, lang_instruction: str) -> str:
+        # Build a language reminder that is explicit for Urdu/Roman Urdu
+        low = lang_instruction.lower()
+        if "roman" in low:
+            lang_reminder = "Respond in Roman Urdu (Pakistani Urdu in Latin script, NOT Hindi). Start answering immediately — no preamble."
+        elif "urdu" in low:
+            lang_reminder = "Respond in Urdu (Nastaliq script, Pakistani Urdu vocabulary, NOT Hindi). Start answering immediately — no preamble."
+        else:
+            lang_reminder = "Respond in English. Start answering immediately — no preamble."
+
         if context:
             return (
                 f"Background knowledge:\n{context}\n\n"
                 f"User question: {clean_query}\n\n"
-                f"Answer the question using your medical expertise. {lang_instruction}. "
-                f"Do not mention or cite sources — integrate the knowledge naturally into your response."
+                f"Answer using your medical expertise. {lang_reminder} "
+                f"Do not mention or cite sources — integrate the knowledge naturally."
             )
         return (
             f"User question: {clean_query}\n\n"
-            f"Answer from your medical expertise. {lang_instruction}."
+            f"Answer from your medical expertise. {lang_reminder}"
         )
 
     def set_top_k(self, top_k: int) -> None:

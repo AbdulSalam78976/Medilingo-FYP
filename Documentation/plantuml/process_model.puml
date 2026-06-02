@@ -1,0 +1,21 @@
+@startuml process_model
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam rectangle {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+}
+skinparam ArrowColor #0066B3
+skinparam ArrowFontColor #0066B3
+
+rectangle "**Increment 1**\n──────────────\nAuthentication\nJWT & Basic UI" as I1
+rectangle "**Increment 2**\n──────────────\nRAG Pipeline\n(English only)" as I2
+rectangle "**Increment 3**\n──────────────\nMultilingual Support\n(Urdu, Roman Urdu)" as I3
+rectangle "**Increment 4**\n──────────────\nVoice I/O, Admin\nPanel & Email OTP" as I4
+
+I1 -[#0066B3]-> I2 : build on
+I2 -[#0066B3]-> I3 : extend
+I3 -[#0066B3]-> I4 : add to
+I4 .[#0066B3].> I1 : refine
+@enduml

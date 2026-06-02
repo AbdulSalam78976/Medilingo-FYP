@@ -1,0 +1,36 @@
+@startuml ssd5_voice_input
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-5: Use Voice Input
+
+actor User
+participant "Frontend\n(React SPA)" as FE
+participant "Web Speech API\n(Browser)" as WSA
+
+User -> FE : click microphone button
+FE -> WSA : new SpeechRecognition()\n.start()
+
+alt Microphone permission granted
+  WSA -> User : audio recording starts
+  User -> WSA : speaks query aloud
+  WSA --> FE : onresult event\n{ transcript }
+  FE -> FE : populate query input\nwith transcript text
+  FE --> User : show transcribed text
+  note over User, FE : User submits query\nnormally (SSD-3)
+else Microphone permission denied
+  WSA --> FE : onerror: not-allowed
+  FE --> User : show error notification
+else Browser unsupported
+  FE -> FE : hide microphone button\n(SpeechRecognition unavailable)
+end
+@enduml

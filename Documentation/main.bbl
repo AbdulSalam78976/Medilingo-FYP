@@ -1,0 +1,46 @@
+\begin{thebibliography}{1}
+
+\bibitem{adahealth2024}
+{Ada Health GmbH}, ``Ada -- your personal health guide.''
+  \url{https://ada.com}, 2024.
+\newblock Accessed: 2025.
+
+\bibitem{singhal2023medpalm}
+K.~Singhal {\em et~al.}, ``Large language models encode clinical knowledge,''
+  {\em Nature}, vol.~620, pp.~172--180, 2023.
+
+\bibitem{fastapi2018}
+S.~Ramírez, ``Fastapi -- modern, fast web framework for building apis with
+  python.'' \url{https://fastapi.tiangolo.com}, 2018.
+\newblock Accessed: 2025.
+
+\bibitem{mongodb2024}
+{MongoDB, Inc.}, ``Mongodb: The developer data platform.''
+  \url{https://www.mongodb.com}, 2024.
+\newblock Accessed: 2025.
+
+\bibitem{chromadb2023}
+{Chroma}, ``Chromadb: The ai-native open-source embedding database.''
+  \url{https://www.trychroma.com}, 2023.
+\newblock Accessed: 2025.
+
+\bibitem{sentencetransformers2019}
+N.~Reimers and I.~Gurevych, ``Sentence-bert: Sentence embeddings using siamese
+  bert-networks,'' 2019.
+
+\bibitem{groq2024}
+{Groq, Inc.}, ``Groq cloud -- llama 3.3-70b inference api.''
+  \url{https://groq.com}, 2024.
+\newblock Accessed: 2025.
+
+\bibitem{react2024}
+{Meta Open Source}, ``React 19 -- the library for web and native user
+  interfaces.'' \url{https://react.dev}, 2024.
+\newblock Accessed: 2025.
+
+\bibitem{lewis2020rag}
+P.~Lewis {\em et~al.}, ``Retrieval-augmented generation for knowledge-intensive
+  nlp tasks,'' in {\em Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2020.
+
+\end{thebibliography}

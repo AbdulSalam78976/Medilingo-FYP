@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-MedLingo AI is a cross-lingual medical RAG (Retrieval-Augmented Generation) chatbot supporting English, Urdu, and Roman Urdu. It consists of a FastAPI backend and a React/Vite frontend.
+MediLingo AI is a cross-lingual medical RAG (Retrieval-Augmented Generation) chatbot supporting English, Urdu, and Roman Urdu. It consists of a FastAPI backend and a React/Vite frontend.
 
 ## Commands
 

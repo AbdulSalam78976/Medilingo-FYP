@@ -44,4 +44,7 @@ class MessageDoc(BaseModel):
     def from_mongo(cls, doc: dict) -> "MessageDoc":
         doc = dict(doc)
         doc.pop("_id", None)
+        # Motor returns naive datetimes; attach UTC so FastAPI serialises with 'Z'
+        if isinstance(doc.get("created_at"), datetime) and doc["created_at"].tzinfo is None:
+            doc["created_at"] = doc["created_at"].replace(tzinfo=timezone.utc)
         return cls(**doc)

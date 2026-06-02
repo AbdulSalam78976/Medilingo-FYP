@@ -1,0 +1,369 @@
+%=============================================================
+% CHAPTER 1 — SOFTWARE PROJECT MANAGEMENT PLAN (SPMP)
+%=============================================================
+
+\chapter{Software Project Management Plan (SPMP)}
+
+%-------------------------------------------------------------
+\section{Introduction}
+%-------------------------------------------------------------
+
+Pakistan is home to over 230 million people, and for most of them Urdu or Roman Urdu is
+the language they actually think in. Yet if someone in Lahore or Karachi wants to look up
+drug interactions or understand a diagnosis, every halfway-decent AI tool on the internet
+responds in one language only: English. Symptom checkers, clinical chatbots, question-answering
+systems --- built for English, returning English, assuming English is the default.
+
+That is not a small gap. For a population this size, it is a structural barrier to basic
+health information. General-purpose AI assistants like ChatGPT can technically respond in
+Urdu, but they pull their medical knowledge straight from training weights --- no verified
+source, no updated corpus, no way to trace where a claim came from. In a medical setting,
+a confident but wrong answer is not just unhelpful. It is dangerous.
+
+What the problem needs is a system that combines the language flexibility of modern LLMs
+with retrieval from a trusted, curated medical knowledge base. Figure~\ref{fig:system_overview}
+shows the high-level design of MediLingo AI, which connects a React/Vite frontend to a
+FastAPI backend running a full RAG pipeline --- PDF ingestion, semantic indexing, and
+multilingual response generation via a hosted large language model.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{system_overview}
+  \caption{MediLingo AI --- High-Level System Overview}
+  \label{fig:system_overview}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{Existing Medical Information Systems}
+%-------------------------------------------------------------
+
+\subsubsection{Existing Systems With AI Capabilities}
+
+A number of commercial platforms already use AI for medical information delivery. Each one
+has the same blind spot: they are built around English, and there is no real pathway for
+someone who wants to type a query in Urdu.
+
+\begin{itemize}
+
+  \item \textbf{Ada Health \cite{adahealth2024}:} Ada is a conversational symptom checker
+        that walks users through a structured set of questions and returns a ranked
+        differential of probable conditions. Its clinical reasoning engine is proprietary
+        and English-only. It does not accept free-text queries in Urdu and provides no
+        retrieval mechanism against a user-supplied knowledge base.
+
+        \begin{figure}[H]
+          \centering
+          \figplaceholder[4cm]{Screenshot of Ada Health symptom checker interface}
+          \caption{Ada Health --- AI-driven symptom checker (English only)}
+          \label{fig:ada}
+        \end{figure}
+
+  \item \textbf{Babylon Health:} Babylon's AI triage service operates on a closed clinical
+        model trained on English-language medical data. It has never been deployed in
+        Pakistan and does not support Urdu as either an input or output language.
+
+        \begin{figure}[H]
+          \centering
+          \figplaceholder[4cm]{Screenshot of Babylon Health AI consultation interface}
+          \caption{Babylon Health --- AI triage and health consultation}
+          \label{fig:babylon}
+        \end{figure}
+
+  \item \textbf{Med-PaLM 2 (Google) \cite{singhal2023medpalm}:} Med-PaLM 2 is a large
+        language model fine-tuned on medical benchmarks. It scored at expert level on
+        medical licensing exams, which is impressive. But it is a research system, not
+        publicly available, and it operates in English only --- so for a Urdu-speaking
+        user, its benchmark scores are essentially irrelevant.
+
+  \item \textbf{WebMD Symptom Checker:} WebMD uses a keyword-driven symptom tool that
+        matches inputs to conditions in a static database. No natural-language generation,
+        no retrieval pipeline, no Urdu support. It is more of a lookup tool than an
+        intelligent assistant.
+
+\end{itemize}
+
+\subsubsection{Existing Systems Without Multilingual AI}
+
+On the Pakistani side, the platforms that actually serve this population provide health
+information without any real AI query capability:
+
+\begin{itemize}
+
+  \item \textbf{Sehat.com.pk and Marham.pk:} These are the most widely used Pakistani
+        health portals. They list doctors, allow appointment booking and publish basic
+        health articles --- some of it in Urdu. But neither offers an interactive medical
+        query interface, and there is no generative response system or retrieval from a
+        knowledge base. Useful for finding a doctor; not useful for asking a clinical
+        question.
+
+  \item \textbf{General-purpose LLMs (e.g., ChatGPT):} Models like ChatGPT do understand
+        Urdu and Roman Urdu reasonably well. The problem is that their medical knowledge
+        comes from training data, not a verified clinical corpus. It cannot be updated, and
+        there is no way to trace a claim back to a source document. That is a meaningful
+        risk in a medical context --- the answer might be fluent and confident while being
+        clinically wrong or outdated.
+
+  \item \textbf{Government and hospital websites:} Static health content published by
+        Pakistani hospitals and the Ministry of National Health Services is in English.
+        None of these platforms offer any interactive query interface at all.
+
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Project Overview}
+%-------------------------------------------------------------
+
+MediLingo AI is a web-based medical chatbot that takes queries in English, Urdu and Roman
+Urdu and returns responses drawn from an indexed collection of medical PDF documents. The
+key distinction from a general-purpose chatbot is that responses are not generated from
+model memory --- they are grounded in passages retrieved from the vector store at query
+time. The LLM is there to synthesise and explain, not to recall.
+
+The backend runs on FastAPI \cite{fastapi2018} and handles four things: user authentication
+and session storage via MongoDB \cite{mongodb2024} and JWT tokens; PDF ingestion and
+semantic chunking via \texttt{pdfplumber}; dense retrieval via ChromaDB \cite{chromadb2023}
+and \texttt{sentence-transformers} \cite{sentencetransformers2019}; and response generation
+through the Groq-hosted LLaMA~3.3-70b model \cite{groq2024}. The frontend is React~19 with
+TypeScript and Vite \cite{react2024}, styled with TailwindCSS, and uses the browser's Web
+Speech API for voice interaction.
+
+The key features of the system are:
+
+\begin{itemize}
+  \item User registration, login and password reset via email OTP
+  \item Multilingual query input in English, Urdu and Roman Urdu
+  \item RAG-grounded responses generated from ingested medical PDFs
+  \item Full chat session management: create, continue, rename and delete sessions
+  \item Persistent message history stored in MongoDB
+  \item Voice input (speech-to-text) and voice output (text-to-speech)
+  \item Admin panel for user management and triggering PDF ingestion
+  \item JWT dual-token authentication with HTTP-only refresh cookies
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Project Deliverables}
+%-------------------------------------------------------------
+
+\begin{itemize}
+  \item Software Project Management Plan (SPMP)
+  \item Software Requirements Specification (SRS)
+  \item Software Design Description (SDD)
+  \item Software Test Documentation (STD)
+  \item FastAPI backend with integrated RAG engine and ingestion pipeline
+  \item React / TypeScript / Vite frontend with multilingual chat interface
+  \item ChromaDB vector store populated from medical PDF documents
+  \item MongoDB schema for users, sessions and messages
+  \item Docker and Docker Compose configuration for single-command deployment
+  \item GitHub repository with complete version-controlled source code
+  \item Final working demonstration of the cross-lingual RAG flow
+\end{itemize}
+
+%=============================================================
+\section{Project Organization}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{Software Process Model}
+%-------------------------------------------------------------
+
+The \textbf{Iterative Incremental Model} was chosen for MediLingo AI. The reasoning was
+straightforward once the system's structure was clear:
+
+\begin{itemize}
+
+  \item The system breaks down naturally into independent, shippable increments.
+        Authentication and session storage can be built and fully verified before a single
+        line of RAG code is written. The English-only RAG pipeline can be validated before
+        Urdu support is layered on. Voice features can be added last without touching
+        anything below them. Each increment leaves the system in a working state.
+
+  \item A RAG pipeline requires empirical tuning --- chunk size, overlap length, top-k
+        retrieval count, similarity threshold. These values cannot be derived analytically;
+        they have to be evaluated against real queries. An iterative model makes this
+        feedback loop part of the process rather than something tacked on at the end.
+
+  \item The language-prefix stripping mechanism was added mid-project, after it became
+        clear that embedding the full prefixed query was degrading retrieval quality. An
+        iterative approach meant this design change could be isolated to one increment,
+        tested and confirmed without breaking anything already shipped.
+
+\end{itemize}
+
+Figure~\ref{fig:process_model} shows the four increments and how each builds on the last.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{process_model}
+  \caption{Iterative Incremental Software Process Model applied to MediLingo AI}
+  \label{fig:process_model}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{Roles and Responsibilities}
+%-------------------------------------------------------------
+
+\textbf{Developer (Student):}
+\begin{itemize}
+  \item Design and implement all FastAPI routers covering authentication
+        (\texttt{/auth/*}), session management (\texttt{/sessions/*}) and RAG query
+        processing (\texttt{/query}, \texttt{/retrieve}, \texttt{/pipeline/*})
+  \item Build the RAG ingestion pipeline: PDF extraction with \texttt{pdfplumber},
+        semantic chunking, embedding generation and ChromaDB indexing
+  \item Integrate the Groq API and implement the language-prefix stripping mechanism so
+        that semantic search operates on clean English text regardless of the query language
+  \item Develop the React frontend including the chat page, session sidebar, login,
+        register, profile, admin, forgot-password and reset-password pages
+  \item Implement voice input and output using the Web Speech API through custom hooks
+  \item Set up JWT dual-token authentication with silent refresh on 401 responses
+  \item Configure Docker and Docker Compose for the full stack
+  \item Write all project documentation and prepare diagrams
+\end{itemize}
+
+\textbf{Supervisor:}
+\begin{itemize}
+  \item Provide architectural guidance on the RAG design and multilingual handling strategy
+  \item Review documentation milestones and provide written feedback
+  \item Clarify requirements and resolve design ambiguities during development
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Tools and Techniques}
+%-------------------------------------------------------------
+
+\textbf{Tools Used:}
+
+\begin{itemize}
+  \item \textbf{Python 3.11 and FastAPI \cite{fastapi2018}} --- asynchronous REST API
+        framework with built-in OpenAPI documentation at \texttt{/docs}
+  \item \textbf{React 19, TypeScript and Vite \cite{react2024}} --- component-based
+        frontend with fast hot-module replacement during development
+  \item \textbf{TailwindCSS} --- utility-first CSS framework for all UI styling
+  \item \textbf{Zustand} --- minimal state management for auth tokens and session list
+  \item \textbf{MongoDB and Motor \cite{mongodb2024}} --- async NoSQL store for
+        \texttt{UserDoc}, \texttt{SessionDoc} and \texttt{MessageDoc} records
+  \item \textbf{ChromaDB \cite{chromadb2023}} --- embedded vector database; persists to
+        \texttt{backend/vectorstore/} and supports cosine similarity search
+  \item \textbf{sentence-transformers \texttt{all-MiniLM-L6-v2}
+        \cite{sentencetransformers2019}} --- 384-dimensional dense embedding model loaded
+        once at startup via the RAG service singleton
+  \item \textbf{Groq API (LLaMA~3.3-70b) \cite{groq2024}} --- cloud-hosted inference
+        endpoint for final response generation
+  \item \textbf{pdfplumber / pypdf} --- PDF text extraction for the ingestion pipeline
+  \item \textbf{Docker and Docker Compose} --- containerised deployment of backend,
+        frontend and MongoDB as a single \texttt{docker-compose up} command
+  \item \textbf{Git and GitHub} --- version control; all increments developed on the same
+        main branch with descriptive commits
+  \item \textbf{PlantUML} --- UML diagram generation for all SRS and SDD sequence diagrams,
+        domain model, class diagram, use case diagram and Gantt chart
+  \item \textbf{VS Code + MiKTeX + LaTeX Workshop} --- documentation typesetting for all
+        four documents compiled locally with pdflatex
+\end{itemize}
+
+\textbf{Techniques Used:}
+
+\begin{itemize}
+  \item Retrieval-Augmented Generation (RAG) \cite{lewis2020rag} --- retrieval from a
+        curated domain corpus before language model generation
+  \item Semantic chunking at 1000 characters with 200-character overlap to preserve
+        sentence context across chunk boundaries
+  \item Cosine similarity search over 384-dimensional embeddings for passage retrieval
+  \item Language-prefix system: user language instruction prepended to query for the LLM
+        but stripped before embedding to keep retrieval language-neutral
+  \item JWT dual-token authentication: 15-minute access tokens (in-memory only) plus
+        7-day refresh tokens (HTTP-only cookie) with automatic silent refresh on 401
+  \item RAG singleton lifecycle managed by \texttt{rag\_service.py} with deferred
+        import of heavy ML libraries (\texttt{sentence-transformers}, \texttt{chromadb})
+        to avoid slowing FastAPI startup
+  \item UUID4 string IDs for all MongoDB documents to decouple application identity from
+        the MongoDB \texttt{\_id} field
+\end{itemize}
+
+%=============================================================
+\section{Project Management Plan}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{Tasks}
+%-------------------------------------------------------------
+
+The project is organised into six phases executed in iterative sequence:
+
+\begin{itemize}
+  \item Requirements Analysis Phase
+  \item System Design Phase
+  \item Backend Development Phase
+  \item Frontend Development Phase
+  \item RAG Integration and Multilingual Testing Phase
+  \item Testing and Validation Phase
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Description}
+%-------------------------------------------------------------
+
+The \textbf{Requirements Analysis Phase} was really about pinning down what the system
+needed to do before any code was written. This meant listing out the functional
+requirements --- registration, multilingual medical query, session management, voice I/O,
+admin ingestion trigger --- and the non-functional ones around latency, token security and
+browser compatibility for voice features.
+
+During the \textbf{System Design Phase}, the three-tier architecture was finalised
+alongside the MongoDB document schema, the ChromaDB collection design and the RAG pipeline
+dataflow. The language-prefix stripping contract between frontend and backend was one of
+the more important design decisions made here. UML artefacts --- use-case diagrams, system
+sequence diagrams, domain model and class diagram --- came out of this phase.
+
+The \textbf{Backend Development Phase} is where the actual implementation began. All
+FastAPI routers were built, along with \texttt{RAGQueryEngine}, the ingestion pipeline
+class \texttt{RAGIngestionPipeline}, the Motor-based database layer and the JWT auth
+service. The Groq API integration and the async lifespan startup sequence were also
+completed here.
+
+The \textbf{Frontend Development Phase} covered all the React pages and custom hooks:
+landing page, chat interface with session sidebar, login and registration flows, profile
+page, forgot-password and reset-password pages, admin panel, and the
+\texttt{useVoiceInput} / \texttt{useVoiceOutput} hooks. Vite's proxy was configured so
+API routes forwarded to \texttt{localhost:8000} during development --- this was important
+for getting cookies to work correctly without fighting CORS.
+
+The \textbf{RAG Integration and Multilingual Testing Phase} connected the live frontend
+to the backend and ran queries in all three languages. This was the phase where the
+language-prefix mechanism was validated --- the test was simple: switching language should
+not change which documents get retrieved, only how the response is worded. It passed.
+
+The \textbf{Testing and Validation Phase} covered functional testing of every use case:
+JWT token lifecycle, RAG retrieval quality, voice API in Chrome and Edge, and admin
+workflows. Issues found here were fixed before final submission.
+
+%-------------------------------------------------------------
+\subsection{Project Plan}
+%-------------------------------------------------------------
+
+Figure~\ref{fig:gantt} shows the project plan as a Gantt chart. The backend and frontend
+development phases overlap intentionally --- waiting for the backend to be completely
+finished before touching the frontend would have stretched the timeline by weeks. The
+RAG integration phase that follows both is where the two halves are connected and
+tested end-to-end.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{gantt}
+  \caption{Project Management Plan --- Gantt Chart}
+  \label{fig:gantt}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{Project Timeline}
+%-------------------------------------------------------------
+
+Figure~\ref{fig:timeline} marks the key milestones from requirements analysis to final
+submission. The documentation-heavy first half and implementation-heavy second half are
+not a coincidence --- writing down what the system needs to do before writing the code
+for it saves significant rework later. That principle drove the schedule.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.45\textwidth]{timeline}
+  \caption{MediLingo AI --- Project Timeline}
+  \label{fig:timeline}
+\end{figure}

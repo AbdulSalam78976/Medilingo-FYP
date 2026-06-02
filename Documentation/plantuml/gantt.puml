@@ -1,0 +1,40 @@
+@startgantt
+skinparam backgroundColor white
+<style>
+ganttDiagram {
+  task {
+    BackgroundColor #EEF5FF
+    LineColor #002B5B
+    FontColor #002B5B
+  }
+  milestone {
+    BackgroundColor #002B5B
+    FontColor white
+  }
+}
+</style>
+
+title MediLingo AI -- Project Plan
+
+Project starts 2025-10-01
+
+[Requirements Analysis]     lasts 30 days   and is colored in #0066B3
+[System Design]             lasts 30 days   and is colored in #0066B3
+[System Design]             starts at [Requirements Analysis]'s end
+
+[Backend Development]       lasts 45 days   and is colored in #002B5B
+[Backend Development]       starts at [System Design]'s end
+
+[Frontend Development]      lasts 35 days   and is colored in #002B5B
+[Frontend Development]      starts 2026-01-05
+
+[RAG Integration & Testing] lasts 30 days   and is colored in #0066B3
+[RAG Integration & Testing] starts at [Backend Development]'s end
+
+[Testing & Validation]      lasts 25 days   and is colored in #0066B3
+[Testing & Validation]      starts at [RAG Integration & Testing]'s end
+
+[Final Submission]          lasts 1 days
+[Final Submission]          starts 2026-04-15
+
+@endgantt

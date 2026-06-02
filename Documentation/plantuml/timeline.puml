@@ -1,0 +1,31 @@
+@startuml timeline
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam activity {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+  ArrowColor #0066B3
+  StartColor #002B5B
+  EndColor #002B5B
+  BarColor #0066B3
+}
+
+|<color:#002B5B>Project Timeline|
+start
+:<b>Requirements Analysis</b>
+Oct 2025;
+:<b>System Design</b>
+Nov 2025;
+:<b>Backend Development</b>
+Dec 2025;
+:<b>Frontend Development</b>
+Jan 2026;
+:<b>RAG Integration & Testing</b>
+Feb 2026;
+:<b>Testing & Validation</b>
+Mar 2026;
+:<b>Final Submission</b>
+Apr 2026;
+stop
+@enduml

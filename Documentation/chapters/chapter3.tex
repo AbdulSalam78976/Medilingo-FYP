@@ -1,0 +1,509 @@
+%============================================================
+% CHAPTER 3 -- SOFTWARE DESIGN DESCRIPTION (SDD)
+%============================================================
+
+\chapter{Software Design Description (SDD)}
+
+%------------------------------------------------------------
+\section{Introduction}
+%------------------------------------------------------------
+
+\subsection{Design Overview}
+
+This Software Design Description (SDD) translates the functional and non-functional
+requirements from the SRS into concrete structural decisions: how the system is split into
+layers and components, how those components interact at runtime, and how persistent data
+is organised. The design choices here are not arbitrary --- each one maps back to one or
+more requirements, and the traceability matrix in Section~3.1.2 makes those mappings
+explicit. The chapter closes with a class diagram covering the key domain entities and
+the backend service layer.
+
+MediLingo AI uses a \textbf{three-tier client--server architecture}: a React single-page
+application running in the browser, a stateless FastAPI application server, and a dual
+persistence layer made up of MongoDB for user and session data and ChromaDB for the indexed
+medical knowledge base. The three tiers communicate over HTTPS with JSON payloads; refresh
+tokens travel as HTTP-only cookies, keeping them away from JavaScript running in the page.
+No business logic lives in the frontend --- the SPA is purely responsible for rendering
+state it receives from the API.
+
+\subsection{Requirements Traceability Matrix}
+
+Table~\ref{tab:rtm} maps each functional requirement from the SRS to the design component
+responsible for satisfying it, along with the section of this chapter where that component
+is described in detail. Any requirement missing a matching row would be a gap in the design.
+
+\begin{longtable}{|>{\bfseries}p{1.8cm}|p{5.2cm}|p{3.8cm}|p{2.0cm}|}
+  \caption{Requirements Traceability Matrix}\label{tab:rtm}\\
+  \hline
+  \theader{Req.\ ID} & \theader{Requirement Summary} & \theader{Design Component} & \theader{Section} \\
+  \hline
+  \endfirsthead
+  \multicolumn{4}{l}{\small\itshape\color{darkgray}(Table \ref{tab:rtm} continued)}\\
+  \hline
+  \theader{Req.\ ID} & \theader{Requirement Summary} & \theader{Design Component} & \theader{Section} \\
+  \hline
+  \endhead
+  \hline
+  \endfoot
+  FR-01 & User Registration & Auth Router, UserDoc Model & \ref{sec:auth-router} \\
+  \hline
+  FR-02 & User Login & Auth Router, JWT Service & \ref{sec:auth-router} \\
+  \hline
+  FR-03 & Session Persistence (JWT) & Auth Router, apiClient & \ref{sec:auth-router} \\
+  \hline
+  FR-04 & Logout & Auth Router & \ref{sec:auth-router} \\
+  \hline
+  FR-05 & Submit Medical Query & Query Router, RAG Engine & \ref{sec:query-router} \\
+  \hline
+  FR-06 & Language Selection & Frontend Language Store, RAG Engine Prefix Stripping & \ref{sec:frontend} \\
+  \hline
+  FR-07 & Multilingual Response & RAG Engine, LLM System Prompt & \ref{sec:rag-engine} \\
+  \hline
+  FR-08 & Retrieve Context Chunks & RAG Engine, Vector Store & \ref{sec:rag-engine} \\
+  \hline
+  FR-09 & Create Chat Session & Sessions Router, SessionDoc & \ref{sec:sessions-router} \\
+  \hline
+  FR-10 & Persist Chat History & Sessions Router, MessageDoc & \ref{sec:sessions-router} \\
+  \hline
+  FR-11 & Load Previous Sessions & Sessions Router & \ref{sec:sessions-router} \\
+  \hline
+  FR-12 & Delete Session & Sessions Router & \ref{sec:sessions-router} \\
+  \hline
+  FR-13 & Voice Input & useVoiceInput Hook (Web Speech API) & \ref{sec:frontend} \\
+  \hline
+  FR-14 & Voice Output & useVoiceOutput Hook (Web Speech API) & \ref{sec:frontend} \\
+  \hline
+  FR-15 & Admin Login & Auth Router (role check) & \ref{sec:auth-router} \\
+  \hline
+  FR-16 & PDF Ingestion (Admin) & Pipeline Router, RAG Ingestion Pipeline & \ref{sec:pipeline-router} \\
+  \hline
+\end{longtable}
+
+%------------------------------------------------------------
+\section{System Architectural Design}
+%------------------------------------------------------------
+
+\subsection{Chosen System Architecture}
+
+MediLingo AI uses a \textbf{four-tier layered architecture}:
+
+\begin{itemize}
+  \item \textbf{Presentation Tier} --- React 19 SPA compiled with Vite, served as static
+        files. Talks to the application tier through REST only; no business logic lives here.
+        UI state is managed by Zustand stores and voice I/O goes through the browser's
+        Web Speech API.
+
+  \item \textbf{Application Tier} --- FastAPI server. Validates requests, enforces
+        authentication, coordinates calls to the AI/ML and persistence tiers, and returns
+        structured JSON. Stateless by design, which means scaling horizontally is
+        straightforward in principle.
+
+  \item \textbf{AI / ML Processing Tier} --- The RAG engine, initialised once at server
+        startup and held as a singleton. Handles embedding generation
+        (sentence-transformers), vector similarity search (ChromaDB), language-prefix
+        stripping, prompt assembly, and LLM invocation (Groq API, LLaMA 3.3-70b). This
+        is the most computationally intensive part of the stack.
+
+  \item \textbf{Persistence Tier} --- Two stores: MongoDB (Motor async driver) for user
+        accounts, sessions and messages; ChromaDB (local persistence) for the encoded
+        medical knowledge base. Both are initialised once at startup via the FastAPI
+        lifespan handler.
+\end{itemize}
+
+Figure~\ref{fig:arch} presents the system architectural diagram.
+
+% ── System Architectural Diagram ──────────────────────────
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{architecture}
+  \caption{MediLingo AI --- Three-Tier System Architecture}
+  \label{fig:arch}
+\end{figure}
+
+\subsection{Discussion of Alternative Designs}
+
+\subsubsection{Monolithic vs.\ Microservices}
+
+A microservices architecture was evaluated --- separate deployable units for auth, chat,
+ingestion and retrieval. It was rejected. The overhead of inter-service communication,
+distributed tracing, and individual deployment pipelines is real, and the benefit at this
+scale is not. A single developer building an academic prototype does not need Kubernetes.
+The layered monolith achieves the same separation of concerns through module boundaries
+rather than process boundaries, which is much easier to develop, debug and test.
+
+\subsubsection{Server-Side Rendering vs.\ SPA}
+
+Next.js with server-side rendering was considered as an alternative to the Vite SPA. SSR
+improves initial page load and SEO, which matters for public-facing content. MediLingo AI's
+chat interface is inherently interactive and session-gated --- there is no content for
+search engines to index, no cold visitors landing on a page. The Vite build was preferred:
+faster development iteration, simpler deployment as static files, and cleaner integration
+with Zustand for keeping access tokens in memory rather than exposing them through
+server-rendered HTML.
+
+\subsubsection{Relational vs.\ Document Store}
+
+PostgreSQL with pgvector was a tempting option --- one database handling both relational
+user data and vector search. ChromaDB plus MongoDB was chosen instead. ChromaDB's
+purpose-built HNSW index and embedding API make the retrieval path significantly
+simpler, and MongoDB's flexible schema means the message and session structures can
+evolve without writing and running migrations every time something changes. For an
+academic project where the schema is still being iterated on, that flexibility mattered.
+
+\subsection{System Interface Description}
+
+\begin{itemize}
+  \item \textbf{User Interface} — Browser-based React SPA. Input: text box, microphone
+        button, language selector. Output: streamed chat bubbles, text-to-speech playback.
+
+  \item \textbf{API Interface} — REST over HTTP/HTTPS. Base URL
+        \texttt{/api/v1}. Authentication via \texttt{Authorization: Bearer <access\_token>}
+        header. Refresh via HTTP-only \texttt{refresh\_token} cookie sent automatically
+        by the browser.
+
+  \item \textbf{LLM Interface} — Groq REST API. The RAG engine sends a
+        \texttt{chat.completions} request containing a system prompt (with language
+        instruction and retrieved context) and the user message. Model:
+        \texttt{llama-3.3-70b-versatile}.
+
+  \item \textbf{Database Interface} — Motor (async PyMongo) for MongoDB;
+        ChromaDB Python client for vector operations. Both connections are initialised
+        once at server startup via the FastAPI lifespan handler.
+\end{itemize}
+
+%------------------------------------------------------------
+\section{Detailed Description of Components}
+\label{sec:components}
+%------------------------------------------------------------
+
+\subsection{Frontend (React SPA)}
+\label{sec:frontend}
+
+The frontend is a React 19 / TypeScript application built with Vite. It is structured
+around pages, Zustand stores, and custom hooks that keep side-effectful code away from
+the rendering layer. Most components are stateless; they display data received through
+props or from the stores, and they call hook functions to trigger any side effects.
+
+\begin{itemize}
+  \item \textbf{router.tsx} --- All client-side routes, defined with React Router v6.
+        Protected routes check the auth store and redirect to \texttt{/login} when no
+        valid access token is present.
+
+  \item \textbf{App.tsx} --- The root component. On mount it silently calls
+        \texttt{/auth/refresh}; if the refresh cookie is still valid the access token
+        is restored and the user lands directly on the chat page without re-entering
+        credentials. This is how the ``stay logged in'' experience works.
+
+  \item \textbf{useAuthStore (Zustand)} --- Holds \texttt{user} and
+        \texttt{accessToken} in memory only. Tokens are never written to
+        \texttt{localStorage} or \texttt{sessionStorage} --- they disappear when the
+        tab closes.
+
+  \item \textbf{apiClient.ts} --- All API calls go through here. It wraps \texttt{fetch}
+        with a configurable timeout and handles 401 responses automatically: calls
+        \texttt{/auth/refresh}, updates the store, and retries the original request once.
+        If the retry also fails, it clears auth state and redirects to \texttt{/login}.
+
+  \item \textbf{useVoiceInput / useVoiceOutput} --- Thin wrappers around
+        \texttt{SpeechRecognition} and \texttt{SpeechSynthesis}. The output hook picks
+        a locale-appropriate voice based on the active language setting.
+\end{itemize}
+
+\subsection{Authentication Router}
+\label{sec:auth-router}
+
+\texttt{routers/auth.py} exposes five endpoints under \texttt{/auth}:
+
+\begin{itemize}
+  \item \textbf{POST /register} --- Validates uniqueness of both username and email, hashes
+        the password with bcrypt via \texttt{passlib}, stores a \texttt{UserDoc} in MongoDB,
+        and returns an access/refresh token pair. A duplicate email gets HTTP~400.
+
+  \item \textbf{POST /login} --- Verifies credentials against the stored bcrypt hash and
+        issues a new token pair. The refresh token goes into an HTTP-only, Secure,
+        SameSite=Lax cookie with a 7-day TTL.
+
+  \item \textbf{POST /refresh} --- Reads the refresh cookie, verifies the JWT signature and
+        expiry, then issues a new 15-minute access token. The remaining TTL on the refresh
+        token is preserved, not reset.
+
+  \item \textbf{POST /logout} --- Clears the refresh cookie. Nothing else needs to happen
+        server-side because access tokens are not persisted anywhere.
+
+  \item \textbf{GET /me} --- Returns the current user's profile using the access token from
+        the Authorization header.
+\end{itemize}
+
+All tokens are signed HS256 JWTs. The \texttt{SECRET\_KEY} used for signing is loaded
+from the environment at startup and is never present in the source code.
+
+\subsection{Sessions Router}
+\label{sec:sessions-router}
+
+\texttt{routers/sessions.py} manages chat sessions and their messages under
+\texttt{/sessions}. Every endpoint here requires a valid access token.
+
+\begin{itemize}
+  \item \textbf{POST /sessions} --- Creates a new \texttt{SessionDoc} in MongoDB with a
+        UUID, the authenticated user's ID, a display title and an empty message list.
+
+  \item \textbf{GET /sessions} --- Returns the user's sessions, sorted by last-updated
+        descending. This is what populates the sidebar.
+
+  \item \textbf{GET /sessions/\{id\}} --- Returns a single session with its full message
+        history. Called when a user clicks on a session to resume it.
+
+  \item \textbf{POST /sessions/\{id\}/messages} --- Appends a \texttt{MessageDoc} (role,
+        content, timestamp, language) to the session. Called by the query router after
+        each exchange, not directly by the user.
+
+  \item \textbf{DELETE /sessions/\{id\}} --- Deletes the session and all its embedded
+        messages.
+\end{itemize}
+
+\subsection{Query and Pipeline Routers}
+\label{sec:query-router}
+\label{sec:pipeline-router}
+
+\texttt{routers/query.py} handles all AI-related endpoints:
+
+\begin{itemize}
+  \item \textbf{POST /query} — The primary chat endpoint. Accepts \texttt{query} (the
+        full language-prefixed string), strips the prefix, embeds the clean query,
+        retrieves the top-\textit{k} context chunks from ChromaDB, assembles the Groq
+        prompt, and streams the LLM response back to the caller.
+
+  \item \textbf{POST /retrieve} — Returns only the raw retrieved context chunks, without
+        LLM generation. Used for debugging and evaluation.
+
+  \item \textbf{GET /config} — Returns current RAG configuration (chunk size, overlap,
+        top-k, model name).
+
+  \item \textbf{GET /info/\{collection\}} — Returns metadata about a ChromaDB collection
+        (document count, embedding dimension).
+\end{itemize}
+
+\texttt{routers/query.py} also contains pipeline management endpoints under
+\texttt{/pipeline}:
+
+\begin{itemize}
+  \item \textbf{POST /pipeline/ingest-sync} — Synchronously ingests all PDF files
+        found in \texttt{backend/datasets/}. Admin-only. Returns a summary of documents
+        indexed, chunks created, and time elapsed.
+
+  \item \textbf{POST /pipeline/ingest} — Same as above but runs as a FastAPI
+        \texttt{BackgroundTask}, returning immediately with a task-accepted response.
+\end{itemize}
+
+\subsection{RAG Engine}
+\label{sec:rag-engine}
+
+The RAG engine (\texttt{rag/engine.py}) is the core AI component of the system.
+It is initialised once at server startup through \texttt{services/rag\_service.py} and
+held as a module-level singleton. The processing pipeline for each incoming query has
+five steps:
+
+\begin{enumerate}
+  \item \textbf{Prefix Stripping} --- The language instruction prefix (e.g.,
+        \textit{``Respond in Urdu: ''}) is detected and stripped before anything else
+        happens. This step is critical for retrieval quality: the clean medical question
+        is what gets embedded and searched, not the prefixed string.
+
+  \item \textbf{Embedding} --- The clean query is passed to
+        \texttt{EmbeddingGenerator.encode()}, which runs \texttt{all-MiniLM-L6-v2} via
+        \texttt{sentence-transformers} to produce a 384-dimensional dense vector.
+
+  \item \textbf{Vector Retrieval} --- The 384-dim query vector is submitted to
+        \texttt{ChromaDBVectorStore.query()}, which returns the top-$k$ document chunks
+        by cosine similarity.
+
+  \item \textbf{Prompt Assembly} --- A structured Groq chat-completions prompt is built:
+        the system message contains the language instruction, a medical-domain persona
+        and the retrieved context passages; the user message contains the original
+        prefixed query.
+
+  \item \textbf{LLM Invocation} --- The assembled prompt is sent to the Groq API
+        (\texttt{llama-3.3-70b-versatile}). The response text is returned to the calling
+        router, which saves it to MongoDB and returns it to the frontend.
+\end{enumerate}
+
+\subsection{Ingestion Pipeline}
+\label{sec:ingestion}
+
+\texttt{rag/pipeline.py} contains \texttt{RAGIngestionPipeline}, which handles the
+one-time (or on-demand) process of building the medical knowledge base:
+
+\begin{enumerate}
+  \item \textbf{PDF Loading} --- \texttt{rag/loader.py} uses \texttt{pdfplumber} as the
+        primary extractor, falling back to \texttt{pypdf} for files that pdfplumber
+        cannot handle cleanly. Every PDF in \texttt{backend/datasets/} is processed.
+
+  \item \textbf{Text Cleaning} --- \texttt{rag/preprocessor.py} normalises whitespace,
+        expands common medical abbreviations, strips headers and footers, and removes
+        non-printable characters. The goal is clean, consistent text going into the
+        embedder.
+
+  \item \textbf{Semantic Chunking} --- \texttt{rag/chunker.py} splits cleaned text into
+        fixed-size chunks of 1000 characters with 200-character overlap. The overlap
+        ensures sentences split across a chunk boundary still appear complete in at
+        least one chunk. Short chunks below a minimum length are discarded.
+
+  \item \textbf{Embedding and Indexing} --- Each chunk is embedded and upserted into
+        the ChromaDB collection with source filename and chunk index as metadata.
+        Upsert rather than insert means re-running the pipeline on an already-indexed
+        document does not create duplicates.
+\end{enumerate}
+
+\subsection{Data Models}
+\label{sec:models}
+
+Three MongoDB document classes are defined in \texttt{models/}:
+
+\begin{itemize}
+  \item \textbf{UserDoc} --- \texttt{id} (UUID4 str), \texttt{username}, \texttt{email},
+        \texttt{hashed\_password}, \texttt{role} (\textit{user} or \textit{admin}),
+        \texttt{created\_at}. Unique indexes on \texttt{username} and \texttt{email} are
+        created at startup to enforce deduplication at the database level.
+
+  \item \textbf{SessionDoc} --- \texttt{id} (UUID4 str), \texttt{user\_id},
+        \texttt{title}, \texttt{created\_at}, \texttt{updated\_at}, and
+        \texttt{messages} --- an embedded array of \texttt{MessageDoc}. The index on
+        \texttt{user\_id} makes the ``fetch my sessions'' query fast regardless of
+        collection size.
+
+  \item \textbf{MessageDoc} --- \texttt{id} (UUID4 str), \texttt{role} (\textit{user}
+        or \textit{assistant}), \texttt{content}, \texttt{language}, \texttt{timestamp}.
+        Stored embedded inside \texttt{SessionDoc} rather than in a separate collection.
+\end{itemize}
+
+All three models expose \texttt{to\_mongo()} and \texttt{from\_mongo()} helpers.
+UUID4 string IDs are used throughout to decouple application identity from MongoDB's
+internal \texttt{\_id} field --- application code never touches \texttt{\_id} directly.
+
+%------------------------------------------------------------
+\section{Architectural Diagram}
+%------------------------------------------------------------
+
+Figure~\ref{fig:arch} in Section~3.2.1 shows the four-tier layered architecture.
+Figure~\ref{fig:rag-flow} below zooms in on the AI/ML tier and traces the full
+query processing flow from the moment a prefixed query arrives at the RAG engine to
+the moment a response is returned to the router.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.55\textwidth]{rag_flow}
+  \caption{RAG Query Processing Flow}
+  \label{fig:rag-flow}
+\end{figure}
+
+%------------------------------------------------------------
+\section{Sequence Diagrams}
+\label{sec:sequence-diagrams}
+%------------------------------------------------------------
+
+This section presents sequence diagrams for each of the ten use cases identified in the
+SRS. All ten diagrams are included as exported PNG sequence diagrams.
+
+\subsection{SSD-1: Register Account}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd1_register}
+  \caption{SSD-1: Register Account}
+  \label{fig:ch3-ssd1}
+\end{figure}
+
+\subsection{SSD-2: Login}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd2_login}
+  \caption{SSD-2: Login}
+  \label{fig:ch3-ssd2}
+\end{figure}
+
+\subsection{SSD-3: Submit Medical Query}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{ssd3_submit_query}
+  \caption{SSD-3: Submit Medical Query}
+  \label{fig:ch3-ssd3}
+\end{figure}
+
+\subsection{SSD-4: Voice Input}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd5_voice_input}
+  \caption{SSD-4: Voice Input --- Speech Recognition Flow}
+  \label{fig:ch3-ssd4}
+\end{figure}
+
+\subsection{SSD-5: Voice Output}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd6_voice_output}
+  \caption{SSD-5: Voice Output --- Text-to-Speech Playback Flow}
+  \label{fig:ch3-ssd5}
+\end{figure}
+
+\subsection{SSD-6: Create New Session}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd4_sessions}
+  \caption{SSD-6: Create New Session}
+  \label{fig:ch3-ssd6}
+\end{figure}
+
+\subsection{SSD-7: Load Previous Sessions}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{ssd4_sessions}
+  \caption{SSD-7 \& SSD-8: Session Management --- Create, Load, and Delete}
+  \label{fig:ch3-ssd7}
+\end{figure}
+
+\subsection{SSD-8: Delete Session}
+
+The delete session flow is covered in Figure~\ref{fig:ch3-ssd7} above, which shows all
+three session management operations (create, load, and delete) in a single combined
+sequence diagram.
+
+\subsection{SSD-9: Admin Login}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd2_login}
+  \caption{SSD-9: Admin Login --- same auth flow as SSD-2, role claim verified server-side}
+  \label{fig:ch3-ssd9}
+\end{figure}
+
+\subsection{SSD-10: Ingest PDF Documents}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{ssd10_ingest}
+  \caption{SSD-10: Ingest PDF Documents}
+  \label{fig:ch3-ssd10}
+\end{figure}
+
+%------------------------------------------------------------
+\section{Class Diagram}
+%------------------------------------------------------------
+
+Figure~\ref{fig:class} shows the key domain classes, their attributes and their
+relationships. Frontend Zustand stores are left out --- this diagram focuses on the
+backend data model and the service layer that drives it. The full picture would include
+the React hooks and stores, but adding them here would make the diagram unreadable
+without adding much that is not already covered in the frontend component description.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{class_diagram}
+  \caption{MediLingo AI --- Class Diagram}
+  \label{fig:class}
+\end{figure}

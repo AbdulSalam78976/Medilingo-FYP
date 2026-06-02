@@ -1,0 +1,30 @@
+@startuml ssd6_voice_output
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-6: Use Voice Output
+
+actor User
+participant "Frontend\n(React SPA)" as FE
+participant "SpeechSynthesis\n(Browser)" as TTS
+
+FE -> FE : receive assistant response
+FE -> TTS : new SpeechSynthesisUtterance(text)\nset lang based on active language
+FE -> TTS : window.speechSynthesis.speak(utterance)
+
+alt SpeechSynthesis available
+  TTS -> User : plays audio response aloud
+  TTS --> FE : onend event
+else SpeechSynthesis not available
+  FE --> User : display text response only\n(no error shown)
+end
+@enduml

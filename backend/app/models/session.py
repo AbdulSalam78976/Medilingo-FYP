@@ -41,4 +41,8 @@ class SessionDoc(BaseModel):
     def from_mongo(cls, doc: dict) -> "SessionDoc":
         doc = dict(doc)
         doc.pop("_id", None)
+        # Motor returns naive datetimes; attach UTC so FastAPI serialises with 'Z'
+        for field in ("created_at", "updated_at"):
+            if isinstance(doc.get(field), datetime) and doc[field].tzinfo is None:
+                doc[field] = doc[field].replace(tzinfo=timezone.utc)
         return cls(**doc)

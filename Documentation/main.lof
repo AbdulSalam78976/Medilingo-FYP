@@ -1,0 +1,35 @@
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces MediLingo AI --- High-Level System Overview}}{2}{figure.caption.3}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Ada Health --- AI-driven symptom checker (English only)}}{2}{figure.caption.4}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Babylon Health --- AI triage and health consultation}}{3}{figure.caption.5}%
+\contentsline {figure}{\numberline {1.4}{\ignorespaces Iterative Incremental Software Process Model applied to MediLingo AI}}{7}{figure.caption.6}%
+\contentsline {figure}{\numberline {1.5}{\ignorespaces Project Management Plan --- Gantt Chart}}{12}{figure.caption.7}%
+\contentsline {figure}{\numberline {1.6}{\ignorespaces MediLingo AI --- Project Timeline}}{13}{figure.caption.8}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces MediLingo AI --- End-to-End System Workflow for Multilingual Medical Query}}{18}{figure.caption.9}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces MediLingo AI --- Use Case Diagram}}{30}{figure.caption.12}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces SSD-1: Register User Account}}{41}{figure.caption.23}%
+\contentsline {figure}{\numberline {2.4}{\ignorespaces SSD-2: Login}}{42}{figure.caption.24}%
+\contentsline {figure}{\numberline {2.5}{\ignorespaces SSD-3: Submit Medical Query}}{43}{figure.caption.25}%
+\contentsline {figure}{\numberline {2.6}{\ignorespaces SSD-4: Manage Chat Sessions (Create / Load / Delete)}}{44}{figure.caption.26}%
+\contentsline {figure}{\numberline {2.7}{\ignorespaces SSD-5: Use Voice Input}}{45}{figure.caption.27}%
+\contentsline {figure}{\numberline {2.8}{\ignorespaces SSD-6: Use Voice Output}}{46}{figure.caption.28}%
+\contentsline {figure}{\numberline {2.9}{\ignorespaces SSD-7: Manage Profile}}{47}{figure.caption.29}%
+\contentsline {figure}{\numberline {2.10}{\ignorespaces SSD-8: Reset Password via Email OTP}}{48}{figure.caption.30}%
+\contentsline {figure}{\numberline {2.11}{\ignorespaces SSD-9: Manage Users (Admin)}}{49}{figure.caption.31}%
+\contentsline {figure}{\numberline {2.12}{\ignorespaces SSD-10: Ingest Medical Documents (Admin)}}{50}{figure.caption.32}%
+\contentsline {figure}{\numberline {2.13}{\ignorespaces MediLingo AI --- Domain Model}}{51}{figure.caption.33}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces MediLingo AI --- Three-Tier System Architecture}}{55}{figure.caption.34}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces RAG Query Processing Flow}}{62}{figure.caption.35}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces SSD-1: Register Account}}{63}{figure.caption.36}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces SSD-2: Login}}{64}{figure.caption.37}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces SSD-3: Submit Medical Query}}{65}{figure.caption.38}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces SSD-4: Voice Input --- Speech Recognition Flow}}{66}{figure.caption.39}%
+\contentsline {figure}{\numberline {3.7}{\ignorespaces SSD-5: Voice Output --- Text-to-Speech Playback Flow}}{67}{figure.caption.40}%
+\contentsline {figure}{\numberline {3.8}{\ignorespaces SSD-6: Create New Session}}{68}{figure.caption.41}%
+\contentsline {figure}{\numberline {3.9}{\ignorespaces SSD-7 \& SSD-8: Session Management --- Create, Load, and Delete}}{69}{figure.caption.42}%
+\contentsline {figure}{\numberline {3.10}{\ignorespaces SSD-9: Admin Login --- same auth flow as SSD-2, role claim verified server-side}}{70}{figure.caption.43}%
+\contentsline {figure}{\numberline {3.11}{\ignorespaces SSD-10: Ingest PDF Documents}}{71}{figure.caption.44}%
+\contentsline {figure}{\numberline {3.12}{\ignorespaces MediLingo AI --- Class Diagram}}{72}{figure.caption.45}%
+\addvspace {10\p@ }

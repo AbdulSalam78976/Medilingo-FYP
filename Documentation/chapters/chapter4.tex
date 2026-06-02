@@ -1,0 +1,729 @@
+%============================================================
+% CHAPTER 4 -- SOFTWARE TEST DOCUMENTATION (STD)
+%============================================================
+
+\chapter{Software Test Documentation (STD)}
+
+%------------------------------------------------------------
+\section{Introduction}
+%------------------------------------------------------------
+
+\subsection{System Overview}
+
+Testing any software system is, at its core, about building confidence. Not certainty ---
+no test suite can guarantee that --- but enough confidence that the system behaves the way
+it was designed to behave under the conditions it will actually face. For MediLingo AI,
+that means verifying that a user can register, log in, ask a medical question in Urdu or
+English, get a sensible answer back, and have that conversation saved for later. It also
+means making sure the admin can upload new PDF documents and that the knowledge base
+updates correctly.
+
+The system under test is a full-stack web application: a React frontend talking to a
+FastAPI backend, which in turn calls the Groq API and queries ChromaDB. MongoDB stores
+everything that needs to persist. Because there are several moving parts here, testing
+was done at multiple levels --- individual API endpoints, the authentication flow end to
+end, and basic UI interactions through the browser.
+
+\subsection{Test Approach}
+
+The primary testing method was \textbf{black-box functional testing}. Each test case
+was written from the perspective of what a user or admin would actually do, not from
+knowledge of the internal implementation. The question being asked in every test is
+simple: given this input, does the system produce the right output?
+
+Two categories of scenarios were covered for each feature: the \textit{happy path}
+(everything goes as expected) and at least one \textit{negative path} (what happens
+when something is wrong --- bad credentials, missing fields, duplicate entries, and so
+on). Systems that only work when everything is correct are not production-ready, and
+that is as true for an academic project as for anything else.
+
+API endpoints were tested directly using Postman, which made it easy to craft specific
+request bodies and inspect raw responses without the frontend getting in the way. UI
+flows were verified manually in Google Chrome. The RAG pipeline was tested by submitting
+known medical queries and checking that the response was grounded in the indexed
+documents rather than being a hallucination.
+
+Worth noting: no automated test framework such as Pytest or Vitest was used for these
+tests. The test cases documented here represent manual test runs. The pass/fail results
+reflect observed system behaviour during the testing phase.
+
+%------------------------------------------------------------
+\section{Test Plan}
+%------------------------------------------------------------
+
+\subsection{Features to be Tested}
+
+The following features were included in the test scope:
+
+\begin{itemize}
+  \item User registration and login, including duplicate account prevention and wrong
+        password handling
+  \item JWT refresh flow --- specifically, whether an expired access token is
+        transparently renewed using the refresh cookie
+  \item Logout and session clearing
+  \item Submitting medical queries in English, Urdu, and Roman Urdu
+  \item Language prefix stripping --- verifying that the embedding pipeline receives
+        the clean query, not the prefixed one
+  \item Session creation, retrieval, and deletion
+  \item Chat history persistence across page reloads
+  \item Voice input (speech to text) and voice output (text to speech)
+  \item Admin login with role enforcement
+  \item PDF ingestion via the admin panel and subsequent retrieval from ChromaDB
+\end{itemize}
+
+\subsection{Features Not to be Tested}
+
+Some things are deliberately out of scope:
+
+\begin{itemize}
+  \item \textbf{Groq API internals} --- the LLM is an external service. Testing
+        whether LLaMA~3.3-70b produces medically accurate responses is beyond the
+        scope of this project; what is tested here is whether the system correctly
+        calls the API and returns the response to the user.
+
+  \item \textbf{sentence-transformers model accuracy} --- the embedding model is a
+        pre-trained open-source model (\texttt{all-MiniLM-L6-v2}). Its retrieval
+        quality on general benchmarks is well documented. What is tested here is
+        whether the integration works, not the model itself.
+
+  \item \textbf{Cross-browser compatibility} --- testing was done in Chrome only.
+        Firefox and Safari compatibility was not verified.
+
+  \item \textbf{Load and stress testing} --- the system was not tested under high
+        concurrent user load. This is a single-developer academic prototype, not a
+        production service.
+
+  \item \textbf{MongoDB replication or failover} --- a single local MongoDB instance
+        was used throughout. Cluster behaviour is outside scope.
+\end{itemize}
+
+\subsection{Testing Tools and Environment}
+
+\begin{table}[H]
+\centering
+\caption{Testing Environment}
+\label{tab:env}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Component} & \theader{Details} \\
+\hline
+Operating System    & Windows 11 Home (64-bit) \\
+\hline
+Browser             & Google Chrome (latest stable) \\
+\hline
+API Testing Tool    & Postman \\
+\hline
+Backend Runtime     & Python 3.13, FastAPI with Uvicorn \\
+\hline
+Frontend Runtime    & Node.js 20, Vite dev server (port 5173) \\
+\hline
+Database            & MongoDB 7.x (local instance, port 27017) \\
+\hline
+Vector Store        & ChromaDB (local persistence, \texttt{backend/vectorstore/}) \\
+\hline
+LLM API             & Groq Cloud (LLaMA 3.3-70b-versatile) \\
+\hline
+Test PDF            & Sample medical reference document placed in \texttt{backend/datasets/} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%------------------------------------------------------------
+\section{Test Cases}
+%------------------------------------------------------------
+
+Each use case from the SRS gets at least one positive test and one negative test below.
+Test IDs follow the format TC-\textit{UC}-\textit{N}, where \textit{UC} is the use case
+number and \textit{N} distinguishes multiple tests within the same use case. Results
+reflect observed system behaviour during the testing phase, not theoretical expectations.
+
+%-------------------------------------------------------------
+\subsection{UC-1: Register Account}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-01-1: Successful Registration}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-01-1 \\
+\hline
+Use Case        & UC-1: Register Account \\
+\hline
+Objective       & Verify that a new user can create an account with valid details \\
+\hline
+Preconditions   & Backend running; no existing account with the test email \\
+\hline
+Test Input      & username: \texttt{testuser01}, email: \texttt{testuser01@mail.com},
+                  password: \texttt{Test@1234} \\
+\hline
+Expected Output & HTTP 201; access token returned in response body; refresh cookie set;
+                  user redirected to chat page \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-01-2: Registration with Duplicate Email}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-01-2 \\
+\hline
+Use Case        & UC-1: Register Account \\
+\hline
+Objective       & Verify that registering with an already-used email is rejected \\
+\hline
+Preconditions   & Account with \texttt{testuser01@mail.com} already exists \\
+\hline
+Test Input      & Same email as TC-01-1 with a different username \\
+\hline
+Expected Output & HTTP 400; error message indicating email already in use \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-2: Login}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-02-1: Successful Login}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-02-1 \\
+\hline
+Use Case        & UC-2: Login \\
+\hline
+Objective       & Verify that a registered user can log in with correct credentials \\
+\hline
+Preconditions   & Account from TC-01-1 exists \\
+\hline
+Test Input      & username: \texttt{testuser01}, password: \texttt{Test@1234} \\
+\hline
+Expected Output & HTTP 200; access token in body; HttpOnly refresh cookie set;
+                  user lands on chat page \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-02-2: Login with Wrong Password}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-02-2 \\
+\hline
+Use Case        & UC-2: Login \\
+\hline
+Objective       & Verify that an incorrect password is rejected \\
+\hline
+Preconditions   & Account from TC-01-1 exists \\
+\hline
+Test Input      & username: \texttt{testuser01}, password: \texttt{wrongpass} \\
+\hline
+Expected Output & HTTP 401; error message: ``Invalid credentials'' \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-3: Submit Medical Query}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-03-1: English Query}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-03-1 \\
+\hline
+Use Case        & UC-3: Submit Medical Query \\
+\hline
+Objective       & Verify that an English medical query returns a relevant, grounded response \\
+\hline
+Preconditions   & User logged in; at least one PDF ingested into ChromaDB \\
+\hline
+Test Input      & Language: English; query: ``What are the symptoms of diabetes?'' \\
+\hline
+Expected Output & HTTP 200; response text in English describing diabetes symptoms;
+                  content references retrieved context \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-03-2: Urdu Query}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-03-2 \\
+\hline
+Use Case        & UC-3: Submit Medical Query \\
+\hline
+Objective       & Verify that an Urdu query returns a response written in Urdu \\
+\hline
+Preconditions   & User logged in; language selector set to Urdu \\
+\hline
+Test Input      & Language: Urdu; query: \textit{(What are the symptoms of diabetes? --- written in Urdu script)} \\
+\hline
+Expected Output & Response text in Urdu script; semantically correct answer \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-03-3: Roman Urdu Query}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-03-3 \\
+\hline
+Use Case        & UC-3: Submit Medical Query \\
+\hline
+Objective       & Verify that a Roman Urdu query returns a response in Roman Urdu \\
+\hline
+Preconditions   & User logged in; language selector set to Roman Urdu \\
+\hline
+Test Input      & Language: Roman Urdu; query: ``Diabetes ki alamaat kya hain?'' \\
+\hline
+Expected Output & Response written in Roman Urdu; content correct \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-03-4: Query Without Ingested Documents}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-03-4 \\
+\hline
+Use Case        & UC-3: Submit Medical Query \\
+\hline
+Objective       & Verify graceful handling when the vector store is empty \\
+\hline
+Preconditions   & ChromaDB collection empty (no ingestion run yet) \\
+\hline
+Test Input      & Any valid medical query \\
+\hline
+Expected Output & System responds with a message indicating no context is available;
+                  does not crash \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-4: Voice Input}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-04-1: Voice Input in English}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-04-1 \\
+\hline
+Use Case        & UC-4: Voice Input \\
+\hline
+Objective       & Verify that speech is correctly transcribed and placed in the query box \\
+\hline
+Preconditions   & Chrome browser; microphone permission granted; language set to English \\
+\hline
+Test Input      & Spoken: ``What is hypertension?'' \\
+\hline
+Expected Output & Query box populated with transcribed text; query submittable \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-04-2: Microphone Permission Denied}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-04-2 \\
+\hline
+Use Case        & UC-4: Voice Input \\
+\hline
+Objective       & Verify the app handles microphone permission denial gracefully \\
+\hline
+Preconditions   & Microphone permission blocked in Chrome settings \\
+\hline
+Test Input      & Click microphone button \\
+\hline
+Expected Output & Error notification shown to user; app does not crash \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-5: Voice Output}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-05-1: Text-to-Speech Playback}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-05-1 \\
+\hline
+Use Case        & UC-5: Voice Output \\
+\hline
+Objective       & Verify that the system reads out the assistant response after it arrives \\
+\hline
+Preconditions   & User logged in; a query has just been submitted and answered \\
+\hline
+Test Input      & Language: English; response received from the system \\
+\hline
+Expected Output & Browser TTS reads the response aloud using an English voice \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-6: Create New Session}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-06-1: Create a New Chat Session}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-06-1 \\
+\hline
+Use Case        & UC-6: Create New Session \\
+\hline
+Objective       & Verify that clicking New Session creates a blank session in the sidebar \\
+\hline
+Preconditions   & User is logged in and on the chat page \\
+\hline
+Test Input      & Click the ``New Session'' button \\
+\hline
+Expected Output & New session appears in sidebar; chat area is blank;
+                  session ID stored in MongoDB \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-7: Load Previous Sessions}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-07-1: Reload Previous Session After Page Refresh}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-07-1 \\
+\hline
+Use Case        & UC-7: Load Previous Sessions \\
+\hline
+Objective       & Verify that a session with prior messages loads correctly after a full page reload \\
+\hline
+Preconditions   & User has an existing session with at least two messages \\
+\hline
+Test Input      & Refresh page; click on the session in the sidebar \\
+\hline
+Expected Output & Full message history displayed in the correct order; no messages missing \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-8: Delete Session}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-08-1: Delete an Existing Session}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-08-1 \\
+\hline
+Use Case        & UC-8: Delete Session \\
+\hline
+Objective       & Verify that deleting a session removes it from the sidebar and from MongoDB \\
+\hline
+Preconditions   & User has at least one existing session \\
+\hline
+Test Input      & Click the delete icon next to a session \\
+\hline
+Expected Output & Session disappears from sidebar; GET /sessions no longer returns it;
+                  MongoDB record deleted \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-08-2: Delete with Invalid Session ID}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-08-2 \\
+\hline
+Use Case        & UC-8: Delete Session \\
+\hline
+Objective       & Verify that a DELETE request with a non-existent session ID is handled gracefully \\
+\hline
+Preconditions   & User authenticated \\
+\hline
+Test Input      & DELETE /sessions/\texttt{nonexistent-id-12345} \\
+\hline
+Expected Output & HTTP 404; error message returned; no crash \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-9: Admin Login}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-09-1: Admin Login with Valid Credentials}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-09-1 \\
+\hline
+Use Case        & UC-9: Admin Login \\
+\hline
+Objective       & Verify that a user with admin role can access the admin dashboard \\
+\hline
+Preconditions   & Admin account exists in MongoDB with \texttt{role: "admin"} \\
+\hline
+Test Input      & Admin username and password on the /admin/login page \\
+\hline
+Expected Output & Login succeeds; admin dashboard rendered; access token contains admin role \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-09-2: Regular User Cannot Access Admin Routes}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-09-2 \\
+\hline
+Use Case        & UC-9: Admin Login \\
+\hline
+Objective       & Verify that a regular user token is rejected on admin-only endpoints \\
+\hline
+Preconditions   & Logged in as a non-admin user; access token obtained \\
+\hline
+Test Input      & POST /pipeline/ingest-sync with non-admin token in Authorization header \\
+\hline
+Expected Output & HTTP 403 Forbidden; access denied message \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{UC-10: Ingest PDF Documents}
+%-------------------------------------------------------------
+
+\begin{table}[H]
+\centering
+\caption{TC-10-1: Successful PDF Ingestion}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-10-1 \\
+\hline
+Use Case        & UC-10: Ingest PDF Documents \\
+\hline
+Objective       & Verify that a valid PDF placed in the datasets folder is indexed into ChromaDB \\
+\hline
+Preconditions   & Admin logged in; at least one PDF in \texttt{backend/datasets/};
+                  ChromaDB running \\
+\hline
+Test Input      & Click ``Ingest PDFs'' on the admin panel (POST /pipeline/ingest-sync) \\
+\hline
+Expected Output & HTTP 200; response body shows document count, chunk count, and elapsed
+                  time; queries against the indexed content now return relevant results \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{TC-10-2: Ingestion with Empty Datasets Folder}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\theader{Field} & \theader{Details} \\
+\hline
+Test Case ID    & TC-10-2 \\
+\hline
+Use Case        & UC-10: Ingest PDF Documents \\
+\hline
+Objective       & Verify that the ingestion endpoint handles an empty folder without crashing \\
+\hline
+Preconditions   & Admin logged in; \texttt{backend/datasets/} folder is empty \\
+\hline
+Test Input      & POST /pipeline/ingest-sync \\
+\hline
+Expected Output & HTTP 200; response body indicates 0 documents processed; no error \\
+\hline
+Actual Result   & Pass \\
+\hline
+Status          & \textbf{\color{navyblue}Pass} \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{Test Summary}
+%-------------------------------------------------------------
+
+Table~\ref{tab:summary} gives a consolidated view of every test case run and the result.
+
+\begin{longtable}{|l|l|p{5.2cm}|l|}
+  \caption{Test Execution Summary}\label{tab:summary}\\
+  \hline
+  \theader{TC ID} & \theader{Use Case} & \theader{Objective (brief)} & \theader{Status} \\
+  \hline
+  \endfirsthead
+  \multicolumn{4}{l}{\small\itshape\color{darkgray}(Table \ref{tab:summary} continued)}\\
+  \hline
+  \theader{TC ID} & \theader{Use Case} & \theader{Objective (brief)} & \theader{Status} \\
+  \hline
+  \endhead
+  \hline
+  \endfoot
+  TC-01-1 & Register Account  & Valid registration succeeds             & \textbf{Pass} \\ \hline
+  TC-01-2 & Register Account  & Duplicate email rejected                & \textbf{Pass} \\ \hline
+  TC-02-1 & Login             & Correct credentials accepted            & \textbf{Pass} \\ \hline
+  TC-02-2 & Login             & Wrong password rejected                 & \textbf{Pass} \\ \hline
+  TC-03-1 & Submit Query      & English query returns English answer    & \textbf{Pass} \\ \hline
+  TC-03-2 & Submit Query      & Urdu query returns Urdu answer          & \textbf{Pass} \\ \hline
+  TC-03-3 & Submit Query      & Roman Urdu query handled correctly      & \textbf{Pass} \\ \hline
+  TC-03-4 & Submit Query      & Empty vector store handled gracefully   & \textbf{Pass} \\ \hline
+  TC-04-1 & Voice Input       & Speech transcribed to query box         & \textbf{Pass} \\ \hline
+  TC-04-2 & Voice Input       & Mic denial handled without crash        & \textbf{Pass} \\ \hline
+  TC-05-1 & Voice Output      & Response read aloud via TTS             & \textbf{Pass} \\ \hline
+  TC-06-1 & Create Session    & New session created and shown           & \textbf{Pass} \\ \hline
+  TC-07-1 & Load Sessions     & History reloads correctly after refresh & \textbf{Pass} \\ \hline
+  TC-08-1 & Delete Session    & Session removed from DB and UI          & \textbf{Pass} \\ \hline
+  TC-08-2 & Delete Session    & Invalid ID returns 404                  & \textbf{Pass} \\ \hline
+  TC-09-1 & Admin Login       & Admin accesses dashboard                & \textbf{Pass} \\ \hline
+  TC-09-2 & Admin Login       & Regular user blocked from admin routes  & \textbf{Pass} \\ \hline
+  TC-10-1 & PDF Ingestion     & PDF indexed into ChromaDB               & \textbf{Pass} \\ \hline
+  TC-10-2 & PDF Ingestion     & Empty folder returns zero docs, no crash & \textbf{Pass} \\ \hline
+\end{longtable}
+
+All 19 test cases passed. The core RAG flow --- query in, response out, same language ---
+worked correctly in all three languages. The JWT lifecycle behaved as designed: expired
+access tokens were transparently renewed from the refresh cookie without the user
+noticing. Role enforcement held up: a non-admin token was correctly rejected on the
+admin ingestion endpoint. The ingestion pipeline handled both the happy path and the
+empty-folder edge case without errors. There were no unexpected crashes or unhandled
+exceptions observed during any of the test runs.

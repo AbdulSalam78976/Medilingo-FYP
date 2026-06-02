@@ -1,0 +1,58 @@
+@startuml architecture
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam component {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+  ArrowColor #0066B3
+}
+skinparam database {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+}
+skinparam package {
+  BackgroundColor #F5F9FF
+  BorderColor #002B5B
+  FontColor #002B5B
+  FontStyle bold
+}
+skinparam ArrowColor #0066B3
+
+package "Presentation Tier  (React SPA)" {
+  component "Chat Page" as Chat
+  component "Login / Register" as AuthUI
+  component "Admin Page" as AdminUI
+}
+
+package "Application Tier  (FastAPI)" {
+  component "Auth Router" as AuthR
+  component "Sessions Router" as SessR
+  component "Query / Pipeline\nRouter" as QueryR
+}
+
+package "AI / ML Tier  (RAG Engine)" {
+  component "Embedding\nGenerator" as Embed
+  component "Vector Store\n(ChromaDB)" as VS
+  component "LLM Caller\n(Groq / LLaMA)" as LLM
+}
+
+package "Persistence Tier" {
+  database "MongoDB\n(Users, Sessions,\nMessages)" as Mongo
+  database "ChromaDB\n(Medical Vectors)" as Chroma
+}
+
+Chat --> AuthR
+Chat --> SessR
+Chat --> QueryR
+AuthUI --> AuthR
+AdminUI --> QueryR
+
+AuthR --> Mongo
+SessR --> Mongo
+QueryR --> Embed
+Embed --> VS
+VS --> LLM
+VS --> Chroma
+@enduml

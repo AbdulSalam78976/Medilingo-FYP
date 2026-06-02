@@ -1,1 +1,1 @@
-# MedLingo AI Backend Application
+# MediLingo AI Backend Application

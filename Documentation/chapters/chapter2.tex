@@ -1,0 +1,939 @@
+%=============================================================
+% CHAPTER 2 — SOFTWARE REQUIREMENT SPECIFICATIONS (SRS)
+%=============================================================
+
+\chapter{Software Requirement Specifications (SRS)}
+
+Getting requirements right before writing a single line of code is one of those lessons
+that takes most developers a bad experience to learn. This chapter documents what
+MediLingo AI is actually supposed to do: the problem motivating it, the boundaries it works
+within, and the complete set of functional and non-functional requirements. Use cases and
+the domain model sit at the end, building on everything before them. The system design
+in Chapter~3 should be fully traceable back to this chapter.
+
+%=============================================================
+\section{Introduction}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{Problem Statement}
+%-------------------------------------------------------------
+
+Pakistan has one of the largest Urdu-speaking populations in the world, yet there is no
+publicly accessible, AI-driven medical tool that accepts queries in Urdu or Roman Urdu and
+grounds its answers in verified medical documents. The gap has two distinct layers.
+
+The first is language. Every AI medical tool of any quality is built for English. They
+cannot process a query written in Urdu, and even when a user translates their question
+manually, there is no mechanism to return a response in their native language. The second
+layer is reliability. General-purpose LLMs that do support Urdu produce answers from
+training weights, not from a curated clinical corpus. In healthcare, a confident but wrong
+answer is not just unhelpful --- it carries real risk. Medical facts, dosage details and
+symptom descriptions need to come from somewhere traceable, not from statistical patterns
+baked into model parameters.
+
+MediLingo AI addresses both. It accepts queries in English, Urdu and Roman Urdu, and every
+response is grounded in passages retrieved from an indexed medical knowledge base at query
+time --- not recalled from model memory.
+
+%-------------------------------------------------------------
+\subsection{Motivation}
+%-------------------------------------------------------------
+
+The case for building this came down to three things that kept coming back during the
+requirements phase.
+
+\begin{itemize}
+  \item \textbf{Language accessibility:} Forcing an Urdu speaker to translate their medical
+        question before they can get a useful answer is not a minor inconvenience. For a lot
+        of people it is a genuine barrier. Removing the translation step lowers the cost of
+        accessing health information for tens of millions of Urdu speakers. That felt like
+        a concrete, achievable goal rather than an abstract one.
+
+  \item \textbf{Factual reliability:} The hallucination problem is well-known. RAG is not
+        a complete solution, but it meaningfully narrows the gap by tying every response
+        to specific retrieved passages from a known knowledge base. At minimum, it makes
+        the system's outputs traceable to a source document --- something a standard LLM
+        pulling from training memory alone cannot do.
+
+  \item \textbf{Practical feasibility:} The components needed for this --- open-source
+        embedding models, a cloud-hosted LLM, a local vector database --- are mature enough
+        now that a working system is achievable without proprietary data or specialised
+        hardware. That was not obviously true two or three years ago.
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Objectives}
+%-------------------------------------------------------------
+
+The primary objectives of the MediLingo AI project are:
+
+\begin{itemize}
+  \item Build a web-based medical chatbot accepting queries in English, Urdu and Roman Urdu,
+        returning responses in the same language as the query
+  \item Ground every response in verified medical PDF documents through a RAG pipeline ---
+        the LLM synthesises and explains, but does not recall clinical facts from memory
+  \item Give users a persistent, session-based chat interface so that separate medical
+        conversations can be maintained and revisited over time
+  \item Implement JWT dual-token authentication with HTTP-only refresh cookies and silent
+        renewal so the user's session does not interrupt them
+  \item Integrate voice input and output through the Web Speech API, making the system
+        accessible to users who prefer speech interaction
+  \item Provide an admin interface for user account management and knowledge base
+        re-ingestion from PDF files placed in the server datasets directory
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Scope}
+%-------------------------------------------------------------
+
+\textbf{In scope:}
+\begin{itemize}
+  \item Web application accessible from any modern browser
+  \item Query input and response output in English, Urdu and Roman Urdu
+  \item RAG pipeline using locally ingested medical PDF documents as the knowledge base
+  \item User registration, login, logout and password reset
+  \item Chat session creation, continuation, deletion and history viewing
+  \item Voice input (speech-to-text) and voice output (text-to-speech)
+  \item Admin panel for user management and PDF ingestion trigger
+  \item Containerised deployment via Docker and Docker Compose
+\end{itemize}
+
+\textbf{Out of scope:}
+\begin{itemize}
+  \item Native mobile application (iOS or Android)
+  \item Diagnostic conclusions or prescriptive medical advice --- the system provides
+        information only, not clinical diagnosis
+  \item Real-time consultation with a licensed medical professional
+  \item Support for languages other than English, Urdu and Roman Urdu
+  \item Integration with external electronic health record (EHR) systems
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Constraints}
+%-------------------------------------------------------------
+
+\begin{itemize}
+  \item A valid \texttt{GROQ\_API\_KEY} environment variable is required; the backend
+        starts successfully without it but every query returns an error until it is set
+  \item Voice input and output depend on the Web Speech API, which has full support only
+        in Chromium-based browsers (Chrome, Edge) and partial support in Firefox; Safari
+        is unsupported for voice input
+  \item ChromaDB is used in embedded mode, meaning it is co-located with the backend
+        process and does not support distributed or replicated vector storage out of the box
+  \item The \texttt{sentence-transformers} model (\texttt{all-MiniLM-L6-v2}) is loaded
+        fully into RAM on startup; the server requires a minimum of 512 MB of available
+        memory for the ML components alone
+  \item Medical knowledge is limited to the content of PDF files placed in
+        \texttt{backend/datasets/} and ingested through the admin pipeline; the system
+        cannot answer questions on topics not covered by those documents
+  \item The language-prefix mechanism relies on the Groq-hosted LLaMA 3.3-70b model's
+        built-in multilingual capability; the quality of Urdu and Roman Urdu responses
+        depends on the model's training data and may vary by medical sub-domain
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Assumptions}
+%-------------------------------------------------------------
+
+\begin{itemize}
+  \item All medical PDF documents provided for ingestion are written in English; the
+        embedding model operates on English text, and translating source documents is
+        outside the scope of the system
+  \item Users have a stable internet connection sufficient for REST API calls and Groq
+        inference requests
+  \item The Groq API service remains available during system operation; no fallback LLM
+        is configured
+  \item Users interact with the system through a web browser on a desktop or laptop
+        device; mobile browser support is functional but not the primary design target
+  \item The admin user is technically familiar enough to place PDF files in the correct
+        server directory and invoke the ingestion endpoint
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{System Workflow Diagram}
+%-------------------------------------------------------------
+
+Figure~\ref{fig:workflow} shows what actually happens to a query from the moment the user
+hits submit to the moment the response lands on screen. The language prefix gets stripped
+early in the process so that vector search always runs against clean medical text ---
+this is the key design detail that makes multilingual retrieval work correctly.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.55\textwidth]{workflow}
+  \caption{MediLingo AI --- End-to-End System Workflow for Multilingual Medical Query}
+  \label{fig:workflow}
+\end{figure}
+
+%=============================================================
+\section{Overall Description}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{Product Perspective}
+%-------------------------------------------------------------
+
+MediLingo AI is a self-contained web application. It does not plug into any larger platform
+and depends on only three external services: the Groq API for LLM inference, MongoDB for
+persistent storage, and ChromaDB for document retrieval. All three can run on the same host
+as the FastAPI backend or on separate infrastructure without any changes to the application
+code. During development, a Vite proxy forwards all API traffic from the browser to
+\texttt{localhost:8000}, which means browser cookies work without fighting CORS --- one
+fewer thing to debug during development.
+
+%-------------------------------------------------------------
+\subsection{User Characteristics}
+%-------------------------------------------------------------
+
+\textbf{Regular User:}
+Someone looking for medical information --- could be fluent in English, Urdu or Roman Urdu,
+or switching between all three. The interface requires basic internet literacy and nothing
+more. Users should not need to understand anything about RAG or how the backend works. Voice
+support is there specifically for people who have difficulty typing or just prefer speaking.
+
+\textbf{Admin User:}
+Someone with enough technical familiarity to place PDF files in the correct server directory
+and trigger the ingestion endpoint from the admin panel. They authenticate through a
+dedicated admin login route that verifies the role field in the JWT payload before granting
+access to admin-only endpoints.
+
+%=============================================================
+\section{Specific Requirements}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{External Interface Requirements}
+%-------------------------------------------------------------
+
+\textbf{User Interface:}
+A React SPA delivered in the browser. The interface includes a landing page, auth pages
+(login, register, forgot password, reset password), a chat page with a collapsible session
+sidebar, a profile page and an admin panel. No plugin or browser extension is required.
+
+\textbf{Hardware Interface:}
+A standard desktop or laptop with a microphone for voice input, and speakers or
+headphones for voice output. No specialised hardware needed.
+
+\textbf{Software Interface:}
+The backend exposes a documented REST API at \texttt{/docs} (Swagger UI). The frontend
+uses this interface exclusively. The backend communicates with MongoDB via Motor and with
+ChromaDB via its Python client.
+
+\textbf{Communication Interface:}
+All frontend-to-backend communication is HTTP/HTTPS with JSON bodies. Auth credentials go
+as a Bearer token in the \texttt{Authorization} header. Refresh tokens are transmitted as
+HTTP-only cookies.
+
+%-------------------------------------------------------------
+\subsection{Functional Requirements}
+%-------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.35}
+\begin{longtable}{|>{\bfseries\color{navyblue}\centering}p{1.3cm}|p{4.2cm}|p{7.8cm}|}
+\caption{Functional Requirements of MediLingo AI}
+\label{tab:fr} \\
+\hline
+\theader{ID} & \theader{Requirement} & \theader{Description} \\
+\hline
+\endfirsthead
+\hline
+\theader{ID} & \theader{Requirement} & \theader{Description} \\
+\hline
+\endhead
+\hline
+\endfoot
+
+FR-01 & User Registration &
+  The system shall allow a new user to create an account using a display name, email
+  address and password. Duplicate email addresses must be rejected. \\
+\hline
+FR-02 & User Login &
+  The system shall authenticate a registered user with their email and password, issue a
+  JWT access token and set an HTTP-only JWT refresh cookie. \\
+\hline
+FR-03 & Silent Token Refresh &
+  The frontend shall automatically call \texttt{POST /auth/refresh} when the backend
+  returns HTTP 401, retry the original request with the new access token, and redirect to
+  login only if the refresh token has also expired. \\
+\hline
+FR-04 & User Logout &
+  The system shall invalidate the refresh cookie and clear in-memory auth state on
+  explicit logout. \\
+\hline
+FR-05 & Password Reset via Email OTP &
+  The system shall allow a registered user to reset their password by requesting a
+  one-time passcode sent to their registered email address. \\
+\hline
+FR-06 & Multilingual Query Submission &
+  The system shall accept medical queries in English, Urdu and Roman Urdu and return
+  a response in the same language as the query. \\
+\hline
+FR-07 & RAG-Grounded Response Generation &
+  Every query response shall be generated by first retrieving the top-K semantically
+  relevant passages from the ChromaDB vector store and including them in the LLM prompt. \\
+\hline
+FR-08 & Language-Prefix Stripping &
+  The backend shall strip the language instruction prefix from the query text before
+  computing the embedding, so that vector search operates on the medical content
+  alone. \\
+\hline
+FR-09 & Chat Session Creation &
+  An authenticated user shall be able to start a new chat session. The session shall be
+  saved to MongoDB and appear in the session sidebar. \\
+\hline
+FR-10 & Chat Session Management &
+  An authenticated user shall be able to view, continue and delete any of their saved
+  chat sessions. All messages within a deleted session shall be removed. \\
+\hline
+FR-11 & Message Persistence &
+  Every user query and assistant response within a session shall be saved as a
+  \texttt{MessageDoc} in MongoDB so that session history survives page reload. \\
+\hline
+FR-12 & Voice Input &
+  The system shall provide a microphone button that activates the browser's Web Speech
+  API to transcribe speech into the query input field. \\
+\hline
+FR-13 & Voice Output &
+  The system shall read assistant responses aloud using the browser's SpeechSynthesis API
+  after each response is received. \\
+\hline
+FR-14 & User Profile Management &
+  An authenticated user shall be able to view and update their display name and email
+  address from the profile page. \\
+\hline
+FR-15 & Admin: User Management &
+  An admin user shall be able to view all registered accounts and activate or deactivate
+  individual users. \\
+\hline
+FR-16 & Admin: PDF Ingestion &
+  An admin user shall be able to trigger a synchronous or background ingestion of PDF
+  files from \texttt{backend/datasets/} into the ChromaDB vector store via the admin
+  panel. \\
+\hline
+\end{longtable}
+
+%-------------------------------------------------------------
+\subsection{Non-Functional Requirements}
+%-------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.35}
+\begin{longtable}{|>{\bfseries\color{navyblue}\centering}p{1.3cm}|p{3.5cm}|p{8.5cm}|}
+\caption{Non-Functional Requirements of MediLingo AI}
+\label{tab:nfr} \\
+\hline
+\theader{ID} & \theader{Category} & \theader{Requirement} \\
+\hline
+\endfirsthead
+\hline
+\theader{ID} & \theader{Category} & \theader{Requirement} \\
+\hline
+\endhead
+\hline
+\endfoot
+
+NFR-01 & Performance &
+  End-to-end query response time (from submission to display) shall not exceed 15 seconds
+  under normal Groq API latency conditions. \\
+\hline
+NFR-02 & Security &
+  User passwords shall be stored as bcrypt hashes. Access tokens shall never be persisted
+  to localStorage or sessionStorage. Refresh tokens shall be stored in HTTP-only, Secure
+  cookies only. \\
+\hline
+NFR-03 & Reliability &
+  The RAG engine and ingestion pipeline shall be initialised as a singleton at backend
+  startup. If initialisation fails, the backend shall still start and return a descriptive
+  error on query endpoints rather than crashing entirely. \\
+\hline
+NFR-04 & Availability &
+  The system shall be deployable as a set of Docker containers that can be started with a
+  single \texttt{docker-compose up} command, minimising manual deployment steps. \\
+\hline
+NFR-05 & Maintainability &
+  Backend logic shall be separated into distinct FastAPI routers
+  (\texttt{auth}, \texttt{sessions}, \texttt{query}). Frontend business logic shall be
+  isolated in custom React hooks, separate from UI components. \\
+\hline
+NFR-06 & Portability &
+  The application shall run on any machine with Docker installed, regardless of the
+  underlying operating system. \\
+\hline
+NFR-07 & Browser Compatibility &
+  The web application shall function correctly on Chrome 120+, Edge 120+ and Firefox 121+.
+  Voice features shall degrade gracefully (button hidden or disabled) on unsupported
+  browsers. \\
+\hline
+NFR-08 & Usability &
+  The language selector, voice button and session sidebar shall be visible and operable
+  without reading any documentation. The interface shall be fully functional on a
+  1280$\times$720 desktop viewport. \\
+\hline
+\end{longtable}
+
+%=============================================================
+\section{Software Product Features}
+%=============================================================
+
+MediLingo AI exposes the following top-level product features:
+
+\begin{itemize}
+  \item \textbf{Cross-Lingual Medical Chat} --- queries and responses in English, Urdu or
+        Roman Urdu, with language routing handled automatically by the prefix mechanism in
+        the frontend and backend
+
+  \item \textbf{RAG-Grounded Answers} --- each response is generated from retrieved passages
+        rather than from the LLM's memory; medical content is always traceable to a source
+        document
+
+  \item \textbf{Persistent Session History} --- users maintain multiple named conversations
+        and can return to any of them at any time; message history survives page reloads
+        because it is stored in MongoDB, not in browser memory
+
+  \item \textbf{Voice Interaction} --- speech-to-text for query input and text-to-speech
+        for response playback; both use the browser's built-in Web Speech API with no
+        additional plugin required
+
+  \item \textbf{Secure Authentication} --- 15-minute access tokens kept in memory,
+        7-day refresh tokens in HTTP-only cookies, automatic silent renewal so the user's
+        session does not get interrupted
+
+  \item \textbf{Admin Knowledge Management} --- administrators can expand or refresh the
+        medical knowledge base by triggering a new PDF ingestion run through the admin panel
+
+  \item \textbf{Email-Based Password Recovery} --- users can regain access via a time-limited
+        one-time passcode sent to their registered email address
+\end{itemize}
+
+%=============================================================
+\section{Software System Attributes}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{Reliability}
+%-------------------------------------------------------------
+
+The RAG engine and ingestion pipeline are initialised as module-level singletons in
+\texttt{rag\_service.py}, loaded once when the FastAPI server starts. If the Groq API
+is temporarily unavailable, the backend logs the error and returns a structured HTTP 500
+rather than taking down the server process. MongoDB is handled the same way. The guiding
+principle was straightforward: one broken external dependency should not kill the whole
+application, and a structured error message is almost always more useful than a crash.
+
+%-------------------------------------------------------------
+\subsection{Availability}
+%-------------------------------------------------------------
+
+The system is packaged with Docker Compose. A single \texttt{docker-compose up} command
+starts the FastAPI backend, the React frontend and MongoDB together. Once running, the
+application is available at \texttt{localhost:5173} (frontend) and \texttt{localhost:8000}
+(API). No further configuration is required beyond setting the environment variables
+described in the CLAUDE.md file.
+
+%-------------------------------------------------------------
+\subsection{Security}
+%-------------------------------------------------------------
+
+Passwords go through bcrypt before they ever touch the database --- there is no plaintext
+stored anywhere in the system. Access tokens live exclusively in Zustand in-memory state
+and disappear when the browser tab closes. Refresh tokens go into HTTP-only cookies that
+JavaScript cannot read, which closes off the most common XSS token-theft vector. CORS is
+configured in \texttt{main.py} to restrict cross-origin requests to the deployed frontend
+origin; wildcard origins are not used.
+
+%-------------------------------------------------------------
+\subsection{Maintainability}
+%-------------------------------------------------------------
+
+The backend splits cleanly into independent FastAPI routers, one file each for auth,
+sessions and query/pipeline. Adding a new API surface means writing one router file and
+one \texttt{app.include\_router()} call --- nothing else changes. On the frontend, all
+data-fetching and auth logic lives in custom hooks (\texttt{useAuth}, \texttt{useChat},
+\texttt{useSessions}), keeping UI components stateless. That separation makes it
+much easier to test business logic independently of the rendering layer.
+
+%-------------------------------------------------------------
+\subsection{Portability}
+%-------------------------------------------------------------
+
+Everything runs inside Docker containers. The host machine needs Docker Engine and nothing
+else. Python 3.11 and Node 20 are fixed in the build image specifications so that a build
+on one machine produces the same result as a build on any other --- the
+``works on my machine'' problem is eliminated by design.
+
+%-------------------------------------------------------------
+\subsection{Performance}
+%-------------------------------------------------------------
+
+Heavy ML imports --- \texttt{sentence-transformers} and \texttt{chromadb} --- are deferred
+inside \texttt{init\_rag()} and loaded once at startup rather than at module import time.
+This keeps FastAPI's startup fast and avoids reloading the embedding model on every
+request. The \texttt{all-MiniLM-L6-v2} model produces 384-dimensional embeddings; at that
+dimensionality, a ChromaDB cosine search across several thousand chunks runs in well under
+100\,ms on a standard CPU. That leaves the Groq API call as the primary latency variable,
+not the retrieval step.
+
+%=============================================================
+\section{Database Requirements}
+%=============================================================
+
+MediLingo AI uses two persistence layers.
+
+\textbf{MongoDB} stores three collections:
+\begin{itemize}
+  \item \texttt{users} --- one document per registered account, containing the UUID4
+        string ID, display name, email, bcrypt password hash, role and active flag
+  \item \texttt{sessions} --- one document per chat session, containing the session ID,
+        the owning user's ID and a display title
+  \item \texttt{messages} --- one document per message (user query or assistant response),
+        containing the parent session ID, the message role
+        (\texttt{user} or \texttt{assistant}), the content text, the language code and a
+        timestamp
+\end{itemize}
+
+\textbf{ChromaDB} stores one collection (\texttt{medical\_documents}):
+\begin{itemize}
+  \item Each record holds the chunk text, its 384-dimensional embedding vector, and
+        metadata including the source filename and chunk index
+  \item The collection is populated by the ingestion pipeline and queried at inference
+        time using cosine similarity
+  \item The collection persists to \texttt{backend/vectorstore/} on the host filesystem
+\end{itemize}
+
+%=============================================================
+\section{Use Cases}
+%=============================================================
+
+%-------------------------------------------------------------
+\subsection{Use Cases List}
+%-------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.3}
+\begin{table}[H]
+\centering
+\small
+\caption{User Use Cases}
+\label{tab:user_uc}
+\begin{tabular}{|>{\bfseries\color{navyblue}\centering}p{1.5cm}|p{4.5cm}|p{7cm}|}
+\hline
+\theader{UC ID} & \theader{Use Case Name} & \theader{Brief Description} \\
+\hline
+UC-1 & Register User Account    & Create a new MediLingo AI account with name, email and password. \\ \hline
+UC-2 & Login                    & Authenticate an existing account and receive JWT tokens. \\ \hline
+UC-3 & Submit Medical Query     & Send a multilingual medical question and receive a RAG-grounded response. \\ \hline
+UC-4 & Manage Chat Sessions     & Create, continue, view and delete persistent chat sessions. \\ \hline
+UC-5 & Use Voice Input          & Dictate a query via microphone using the Web Speech API. \\ \hline
+UC-6 & Use Voice Output         & Have an assistant response read aloud via text-to-speech. \\ \hline
+UC-7 & Manage Profile           & View and update display name and email address. \\ \hline
+UC-8 & Reset Password           & Recover account access via an email one-time passcode. \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Admin Use Cases}
+\label{tab:admin_uc}
+\begin{tabular}{|>{\bfseries\color{navyblue}\centering}p{1.5cm}|p{4.5cm}|p{7cm}|}
+\hline
+\theader{UC ID} & \theader{Use Case Name} & \theader{Brief Description} \\
+\hline
+UC-9  & Manage Users            & View all accounts; activate or deactivate individual users. \\ \hline
+UC-10 & Ingest Medical Documents & Trigger PDF extraction, chunking, embedding and ChromaDB indexing. \\ \hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{Use Case Diagram}
+%-------------------------------------------------------------
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85 \textwidth]{use_case_diagram}
+  \caption{MediLingo AI --- Use Case Diagram}
+  \label{fig:ucd}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{Use Cases Description}
+%-------------------------------------------------------------
+
+\renewcommand{\arraystretch}{1.4}
+
+% ─── UC-1 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-1: Register User Account}
+\label{tab:uc1}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-1: Register User Account}} \\ \hline
+Use Case ID     & UC-1 \\ \hline
+Actor           & Unregistered User \\ \hline
+Description     & A new user creates a MediLingo AI account by supplying a display name, email address and password. \\ \hline
+Preconditions   & The provided email address is not already associated with an existing account. \\ \hline
+Main Flow       &
+  1.\ User navigates to the Register page. \newline
+  2.\ User enters display name, email address and password. \newline
+  3.\ System validates that the email is not already in use. \newline
+  4.\ System hashes the password with bcrypt and creates a UserDoc in MongoDB. \newline
+  5.\ System issues a 15-minute access token and sets a 7-day HTTP-only refresh cookie. \newline
+  6.\ User is redirected to the chat interface. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Email already registered: system returns HTTP~400 and the user corrects the email field. \newline
+  \textbf{A2} -- Password below minimum length: the form is rejected client-side before submission. \\ \hline
+Postconditions  & A UserDoc exists in the \texttt{users} collection. The user is authenticated with valid JWT tokens. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-2 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-2: Login}
+\label{tab:uc2}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-2: Login}} \\ \hline
+Use Case ID     & UC-2 \\ \hline
+Actor           & Registered User / Admin User \\ \hline
+Description     & An existing user authenticates with their email and password to receive JWT tokens. \\ \hline
+Preconditions   & A valid account exists for the provided email. The account is active. \\ \hline
+Main Flow       &
+  1.\ User navigates to the Login page. \newline
+  2.\ User enters email address and password. \newline
+  3.\ System verifies the bcrypt hash against the stored value. \newline
+  4.\ System issues a new access token and sets a new refresh cookie. \newline
+  5.\ User is redirected to the chat interface. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Incorrect credentials: system returns HTTP~401 and the user is prompted to retry. \newline
+  \textbf{A2} -- Account deactivated: system returns HTTP~403 with an appropriate error message. \\ \hline
+Postconditions  & The user's access token is held in Zustand memory. A refresh cookie is set in the browser. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-3 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-3: Submit Medical Query}
+\label{tab:uc3}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-3: Submit Medical Query}} \\ \hline
+Use Case ID     & UC-3 \\ \hline
+Actor           & Authenticated User \\ \hline
+Description     & The user submits a medical question in their chosen language and receives a RAG-grounded response in the same language. \\ \hline
+Preconditions   & User is authenticated. The RAG engine is initialised. At least one document has been ingested into ChromaDB. \\ \hline
+Main Flow       &
+  1.\ User selects a language (English / Urdu / Roman Urdu) and types a query. \newline
+  2.\ Frontend prepends the language instruction to the query text. \newline
+  3.\ Frontend sends POST \texttt{/query} with the prefixed query and session ID. \newline
+  4.\ Backend strips the language prefix; the clean query is embedded with \texttt{all-MiniLM-L6-v2}. \newline
+  5.\ Backend performs cosine similarity search in ChromaDB and retrieves the top-K passages. \newline
+  6.\ Backend builds a prompt containing the language instruction, retrieved passages and query. \newline
+  7.\ Groq LLaMA~3.3-70b generates a response in the selected language. \newline
+  8.\ Backend saves user message and assistant response as MessageDocs in MongoDB. \newline
+  9.\ Response is returned to the frontend and displayed in the chat interface. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Groq API unavailable: system returns HTTP~500 with ``Service temporarily unavailable''. \newline
+  \textbf{A2} -- No relevant passages found: LLM is prompted to indicate insufficient information in the knowledge base. \newline
+  \textbf{A3} -- Access token expired: \texttt{authenticatedFetch} silently calls \texttt{/auth/refresh} and retries. \\ \hline
+Postconditions  & The query and response are saved to the session. The chat view is updated. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-4 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-4: Manage Chat Sessions}
+\label{tab:uc4}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-4: Manage Chat Sessions}} \\ \hline
+Use Case ID     & UC-4 \\ \hline
+Actor           & Authenticated User \\ \hline
+Description     & The user creates, switches between and deletes named chat sessions via the session sidebar. \\ \hline
+Preconditions   & User is authenticated. \\ \hline
+Main Flow       &
+  1.\ User clicks ``New Session'' in the sidebar; a new SessionDoc is created in MongoDB. \newline
+  2.\ User clicks an existing session to load its message history. \newline
+  3.\ User deletes a session; the SessionDoc and all child MessageDocs are removed. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Network error during session creation: the sidebar shows an error and the session is not added. \\ \hline
+Postconditions  & The selected session is active and its messages are loaded in the chat area. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-5 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-5: Use Voice Input}
+\label{tab:uc5}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-5: Use Voice Input}} \\ \hline
+Use Case ID     & UC-5 \\ \hline
+Actor           & Authenticated User \\ \hline
+Description     & The user dictates their query via the microphone button; the transcript populates the query input field. \\ \hline
+Preconditions   & User is authenticated. Browser supports the Web Speech API. Microphone permission has been granted. \\ \hline
+Main Flow       &
+  1.\ User clicks the microphone button in the chat interface. \newline
+  2.\ Browser requests microphone permission if not already granted. \newline
+  3.\ Speech recognition starts; the user speaks their query. \newline
+  4.\ Transcript text is placed in the query input field. \newline
+  5.\ User submits the query normally (UC-3). \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Microphone permission denied: an error alert is shown and recognition does not start. \newline
+  \textbf{A2} -- Browser does not support Web Speech API: the microphone button is hidden. \\ \hline
+Postconditions  & Query input field contains the transcribed text, ready for submission. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-6 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-6: Use Voice Output}
+\label{tab:uc6}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-6: Use Voice Output}} \\ \hline
+Use Case ID     & UC-6 \\ \hline
+Actor           & Authenticated User \\ \hline
+Description     & After an assistant response is displayed, the system reads it aloud in the user's selected language using the browser's SpeechSynthesis API. \\ \hline
+Preconditions   & A response has been received and rendered. Browser supports SpeechSynthesis. \\ \hline
+Main Flow       &
+  1.\ Assistant response is received by the frontend. \newline
+  2.\ \texttt{useVoiceOutput} hook passes the response text to the SpeechSynthesis API. \newline
+  3.\ Browser reads the text aloud in the configured language voice. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- SpeechSynthesis not available: response is displayed as text only; no error is shown. \\ \hline
+Postconditions  & The response text has been read aloud or silently displayed if TTS is unavailable. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-7 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-7: Manage Profile}
+\label{tab:uc7}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-7: Manage Profile}} \\ \hline
+Use Case ID     & UC-7 \\ \hline
+Actor           & Authenticated User \\ \hline
+Description     & The user views and updates their display name or email address from the profile page. \\ \hline
+Preconditions   & User is authenticated. \\ \hline
+Main Flow       &
+  1.\ User navigates to the Profile page. \newline
+  2.\ Current display name and email are pre-filled in the form. \newline
+  3.\ User edits one or both fields and clicks Save. \newline
+  4.\ System updates the UserDoc in MongoDB and returns the updated values. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- New email already taken: system returns HTTP~400 and the user corrects input. \\ \hline
+Postconditions  & The UserDoc in MongoDB reflects the updated display name or email. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-8 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-8: Reset Password}
+\label{tab:uc8}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-8: Reset Password}} \\ \hline
+Use Case ID     & UC-8 \\ \hline
+Actor           & Registered User \\ \hline
+Description     & A user who has forgotten their password recovers account access via a one-time passcode sent to their registered email address. \\ \hline
+Preconditions   & An account exists for the email address provided. \\ \hline
+Main Flow       &
+  1.\ User navigates to Forgot Password and enters their registered email. \newline
+  2.\ System generates a time-limited OTP and sends it via the email service. \newline
+  3.\ User enters the OTP on the Reset Password page. \newline
+  4.\ User sets and confirms a new password. \newline
+  5.\ System hashes the new password and updates the UserDoc. \newline
+  6.\ User is redirected to the Login page. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Email not registered: system returns HTTP~404; no OTP is sent. \newline
+  \textbf{A2} -- OTP expired: user must restart the process from step 1. \newline
+  \textbf{A3} -- Passwords do not match: form is rejected client-side before submission. \\ \hline
+Postconditions  & The user's password hash in MongoDB is updated. The user can log in with the new password. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-9 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-9: Manage Users (Admin)}
+\label{tab:uc9}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-9: Manage Users (Admin)}} \\ \hline
+Use Case ID     & UC-9 \\ \hline
+Actor           & Admin User \\ \hline
+Description     & An admin views the full user list and can activate or deactivate individual accounts. \\ \hline
+Preconditions   & Admin is authenticated via the admin login route. \\ \hline
+Main Flow       &
+  1.\ Admin navigates to the Admin Panel. \newline
+  2.\ System displays a paginated list of all registered users with their status. \newline
+  3.\ Admin clicks the toggle next to a user to activate or deactivate their account. \newline
+  4.\ System updates the \texttt{is\_active} flag in the UserDoc. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- Admin attempts to deactivate their own account: system returns an error to prevent lockout. \\ \hline
+Postconditions  & The targeted user's active status is updated. If deactivated, their next login attempt returns HTTP~403. \\ \hline
+\end{tabular}
+\end{table}
+
+% ─── UC-10 ───────────────────────────────────────────────────
+\begin{table}[H]
+\centering\small
+\caption{UC-10: Ingest Medical Documents (Admin)}
+\label{tab:uc10}
+\begin{tabular}{|>{\bfseries\color{navyblue}}p{3.2cm}|p{9.8cm}|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{navyblue}\textbf{\color{white}UC-10: Ingest Medical Documents (Admin)}} \\ \hline
+Use Case ID     & UC-10 \\ \hline
+Actor           & Admin User \\ \hline
+Description     & An admin triggers the RAG ingestion pipeline to extract, chunk, embed and index PDF files from the datasets directory into ChromaDB. \\ \hline
+Preconditions   & Admin is authenticated. One or more PDF files are present in \texttt{backend/datasets/}. \\ \hline
+Main Flow       &
+  1.\ Admin navigates to the Admin Panel and clicks ``Ingest Documents''. \newline
+  2.\ Frontend sends POST \texttt{/pipeline/ingest-sync}. \newline
+  3.\ Backend reads all PDF files from \texttt{backend/datasets/} using \texttt{pdfplumber}. \newline
+  4.\ Extracted text is split into 1000-character chunks with 200-character overlap. \newline
+  5.\ Each chunk is embedded with \texttt{all-MiniLM-L6-v2}. \newline
+  6.\ Embeddings and metadata are stored in the \texttt{medical\_documents} ChromaDB collection. \newline
+  7.\ System returns a summary of ingested documents and chunk count. \\ \hline
+Alternate Flow  &
+  \textbf{A1} -- No PDF files found: system returns HTTP~400 with ``No documents found in datasets directory''. \newline
+  \textbf{A2} -- PDF is password-protected or corrupted: the file is skipped and a warning is included in the response. \\ \hline
+Postconditions  & ChromaDB contains embeddings for all successfully processed chunks. Subsequent queries can retrieve passages from the newly ingested documents. \\ \hline
+\end{tabular}
+\end{table}
+
+%=============================================================
+\section{System Sequence Diagrams}
+%=============================================================
+
+A System Sequence Diagram (SSD) shows the interaction between an actor and the system
+boundary for a given use case. The system is a black box at this level of abstraction ---
+exactly what the SRS perspective calls for. The internals --- how FastAPI coordinates
+the RAG engine, ChromaDB and MongoDB to produce a response --- are covered in the detailed
+sequence diagrams of Chapter~3.
+
+%-------------------------------------------------------------
+\subsection{SSD-1: Register User Account}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd1_register}
+  \caption{SSD-1: Register User Account}
+  \label{fig:ssd1}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-2: Login}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd2_login}
+  \caption{SSD-2: Login}
+  \label{fig:ssd2}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-3: Submit Medical Query}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{ssd3_submit_query}
+  \caption{SSD-3: Submit Medical Query}
+  \label{fig:ssd3}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-4: Manage Chat Sessions}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{ssd4_sessions}
+  \caption{SSD-4: Manage Chat Sessions (Create / Load / Delete)}
+  \label{fig:ssd4}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-5: Use Voice Input}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd5_voice_input}
+  \caption{SSD-5: Use Voice Input}
+  \label{fig:ssd5}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-6: Use Voice Output}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{ssd6_voice_output}
+  \caption{SSD-6: Use Voice Output}
+  \label{fig:ssd6}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-7: Manage Profile}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd7_profile}
+  \caption{SSD-7: Manage Profile}
+  \label{fig:ssd7}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-8: Reset Password}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{ssd8_reset_password}
+  \caption{SSD-8: Reset Password via Email OTP}
+  \label{fig:ssd8}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-9: Manage Users (Admin)}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{ssd9_manage_users}
+  \caption{SSD-9: Manage Users (Admin)}
+  \label{fig:ssd9}
+\end{figure}
+
+%-------------------------------------------------------------
+\subsection{SSD-10: Ingest Medical Documents (Admin)}
+%-------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{ssd10_ingest}
+  \caption{SSD-10: Ingest Medical Documents (Admin)}
+  \label{fig:ssd10}
+\end{figure}
+
+%=============================================================
+\section{Domain Model}
+%=============================================================
+
+The domain model in Figure~\ref{fig:domain} shows the three core persistent entities and
+how they relate. The structure is deliberately simple. A \textbf{User} owns zero or more
+\textbf{Sessions}. Each \textbf{Session} contains zero or more \textbf{Messages}. When a
+session is deleted, everything under it goes with it --- there are no orphaned messages
+left behind in the database. All three entities are stored in MongoDB; messages are
+embedded inside their parent session document rather than in a separate collection.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{domain_model}
+  \caption{MediLingo AI --- Domain Model}
+  \label{fig:domain}
+\end{figure}

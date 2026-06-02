@@ -1,0 +1,38 @@
+@startuml system_overview
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam component {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+  ArrowColor #0066B3
+}
+skinparam database {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  FontColor #002B5B
+}
+skinparam actor {
+  BorderColor #002B5B
+  FontColor #002B5B
+}
+
+left to right direction
+
+actor "User\n(Web Browser)" as User
+
+component "React / Vite\nFrontend" as FE
+component "FastAPI\nBackend" as BE
+component "Groq API\nLLaMA 3.3-70b" as LLM
+
+database "ChromaDB\nVector Store" as Chroma
+database "MongoDB\nSessions / Auth" as Mongo
+
+User <--> FE : HTTPS
+FE <--> BE : REST / JSON
+BE --> LLM : Prompt
+LLM ..> BE : Response
+BE --> Chroma : embed / search
+Chroma ..> BE : chunks
+BE --> Mongo : read / write
+@enduml

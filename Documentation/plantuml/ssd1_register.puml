@@ -1,0 +1,31 @@
+@startuml ssd1_register
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  ActorFontColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-1: Register Account
+
+actor User
+participant "Frontend\n(React SPA)" as FE
+participant "FastAPI\nBackend" as API
+database "MongoDB" as DB
+
+User -> FE : fill registration form\n(name, email, password)
+FE -> API : POST /auth/register
+API -> DB : findUser(email)
+DB --> API : null (no existing account)
+API -> DB : insertUser(bcrypt hash)
+DB --> API : ack
+API --> FE : 201 Created\n{ access_token }
+note right of API : refresh cookie set\n(HttpOnly, 7 days)
+FE --> User : redirect to /chat
+@enduml

@@ -1,0 +1,39 @@
+@startuml ssd10_ingest
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-10: Ingest PDF Documents (Admin)
+
+actor Admin
+participant "Frontend\n(Admin Panel)" as FE
+participant "FastAPI\nBackend" as API
+participant "RAG Ingestion\nPipeline" as PIP
+database "ChromaDB" as VDB
+
+Admin -> FE : click "Ingest PDFs"
+FE -> API : POST /pipeline/ingest-sync
+
+API -> PIP : run(datasets/)
+
+loop for each PDF in datasets/
+  PIP -> PIP : extract text\n(pdfplumber / pypdf fallback)
+  PIP -> PIP : clean text\n(normalise whitespace, expand abbreviations)
+  PIP -> PIP : chunk text\n(1000 chars, 200 overlap)
+  PIP -> PIP : embed chunks\n(all-MiniLM-L6-v2)
+  PIP -> VDB : upsert(vectors, metadata)
+  VDB --> PIP : ack
+end
+
+PIP --> API : summary { docs, chunks, elapsed_ms }
+API --> FE : 200 OK { summary }
+FE --> Admin : show ingestion report
+@enduml

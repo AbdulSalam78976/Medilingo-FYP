@@ -11,6 +11,10 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
+import uuid
+from datetime import datetime, timezone, timedelta
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -26,6 +30,7 @@ from app.services.auth_service import (
     hash_password,
     verify_password,
 )
+from app.services.email_service import send_welcome_email, send_password_reset_email
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,6 +52,22 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
 
 
 class TokenResponse(BaseModel):
@@ -135,6 +156,9 @@ async def register(
     refresh_token = create_refresh_token(user.id, user.email)
     _set_refresh_cookie(response, refresh_token)
 
+    # Send welcome email in background (non-blocking)
+    asyncio.create_task(send_welcome_email(user.email))
+
     return TokenResponse(access_token=access_token)
 
 
@@ -219,3 +243,59 @@ async def logout(response: Response) -> dict:
 @router.get("/me", response_model=UserResponse, summary="Return current user profile")
 async def me(current_user: UserDoc = Depends(get_current_user)) -> UserResponse:
     return UserResponse(id=current_user.id, email=current_user.email)
+
+
+# ── POST /auth/forgot-password ────────────────────────────────────────────────
+
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_200_OK,
+    summary="Request a password reset link via email",
+)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> dict:
+    doc = await db.users.find_one({"email": body.email})
+    if doc:
+        token = str(uuid.uuid4())
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        await db.password_resets.insert_one({
+            "token": token,
+            "email": body.email,
+            "expires_at": expires_at,
+            "used": False,
+        })
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        asyncio.create_task(send_password_reset_email(body.email, reset_url))
+    # Always return 200 to prevent email enumeration
+    return {"detail": "If an account with that email exists, a reset link has been sent."}
+
+
+# ── POST /auth/reset-password ─────────────────────────────────────────────────
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_200_OK,
+    summary="Reset password using the token from the reset email",
+)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> dict:
+    record = await db.password_resets.find_one({"token": body.token, "used": False})
+    if not record:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token.")
+
+    expires_at: datetime = record["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset token has expired.")
+
+    await db.users.update_one(
+        {"email": record["email"]},
+        {"$set": {"hashed_password": hash_password(body.new_password)}},
+    )
+    await db.password_resets.update_one({"token": body.token}, {"$set": {"used": True}})
+    return {"detail": "Password updated successfully."}

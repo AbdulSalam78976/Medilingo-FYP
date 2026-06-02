@@ -57,11 +57,26 @@ class Settings:
     VECTORSTORE_PATH: str = str(_BACKEND_DIR / "vectorstore")
     PROCESSED_DATA_PATH: str = str(_BACKEND_DIR / "processed_data")
 
+    # ── Email / SMTP ──────────────────────────────────────────────────────────
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@medilingo.com")
+    FROM_NAME: str = os.getenv("FROM_NAME", "Medilingo")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
     # ── Admin ─────────────────────────────────────────────────────────────────
+    ADMIN_DEFAULT_EMAIL: str = os.getenv("ADMIN_DEFAULT_EMAIL", "admin@medilingo.com")
+    ADMIN_DEFAULT_PASSWORD: str = os.getenv("ADMIN_DEFAULT_PASSWORD", "12345678")
+
     # Comma-separated list of emails that can access /admin endpoints.
-    ADMIN_EMAILS: list[str] = [
-        e.strip() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()
-    ]
+    # The default admin email is always included automatically.
+    _default_admin = os.getenv("ADMIN_DEFAULT_EMAIL", "admin@medilingo.com")
+    _env_admins = [e.strip() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
+    if _default_admin and _default_admin not in _env_admins:
+        _env_admins.append(_default_admin)
+    ADMIN_EMAILS: list[str] = _env_admins
 
     def validate(self) -> None:
         import logging as _log

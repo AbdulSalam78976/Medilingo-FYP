@@ -1,0 +1,40 @@
+@startuml ssd7_profile
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-7: Manage Profile
+
+actor User
+participant "Frontend\n(React SPA)" as FE
+participant "FastAPI\nBackend" as API
+database "MongoDB" as DB
+
+User -> FE : navigate to /profile
+FE -> API : GET /auth/me
+API --> FE : 200 { username, email, role }
+FE --> User : display pre-filled profile form
+
+User -> FE : edit name or email, click Save
+FE -> API : PUT /auth/profile\n{ name, email }
+API -> DB : findUser(email) — check uniqueness
+alt Email not already taken
+  DB --> API : null (unique)
+  API -> DB : updateUser(id, name, email)
+  DB --> API : updated UserDoc
+  API --> FE : 200 { updated profile }
+  FE --> User : show success message
+else Email already registered
+  DB --> API : existing UserDoc
+  API --> FE : 400 Bad Request
+  FE --> User : show "email already in use" error
+end
+@enduml

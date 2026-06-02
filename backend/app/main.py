@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import connect_db, close_db
+from app.database import connect_db, close_db, get_database
 from app.routers import auth, sessions, query, admin
 from app.services.rag_service import init_rag, shutdown_rag
 
@@ -27,6 +27,27 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+# ── Default admin seeder ──────────────────────────────────────────────────────
+
+async def _seed_admin() -> None:
+    """Create the default admin account on first startup if it doesn't exist."""
+    if not settings.ADMIN_DEFAULT_EMAIL or not settings.ADMIN_DEFAULT_PASSWORD:
+        return
+    from app.models.user import UserDoc
+    from app.services.auth_service import hash_password
+    db = get_database()
+    existing = await db.users.find_one({"email": settings.ADMIN_DEFAULT_EMAIL})
+    if existing:
+        logger.info("Default admin already exists: %s", settings.ADMIN_DEFAULT_EMAIL)
+        return
+    user = UserDoc(
+        email=settings.ADMIN_DEFAULT_EMAIL,
+        hashed_password=hash_password(settings.ADMIN_DEFAULT_PASSWORD),
+    )
+    await db.users.insert_one(user.to_mongo())
+    logger.info("Default admin created: %s", settings.ADMIN_DEFAULT_EMAIL)
 
 
 # ── Lifespan (replaces deprecated @app.on_event) ─────────────────────────────
@@ -39,7 +60,10 @@ async def lifespan(app: FastAPI):
     # 1. MongoDB
     await connect_db()
 
-    # 2. RAG (heavy — sentence-transformers + ChromaDB)
+    # 2. Seed default admin account
+    await _seed_admin()
+
+    # 3. RAG (heavy — sentence-transformers + ChromaDB)
     try:
         settings.validate()
         init_rag()

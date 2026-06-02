@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <!-- Rounded square background -->
+  <rect width="64" height="64" rx="14" fill="#1A5F7A"/>
+
+  <!-- Subtle inner glow -->
+  <rect width="64" height="64" rx="14" fill="url(#glowGrad)" opacity="0.35"/>
+
+  <!-- Medical cross — vertical bar -->
+  <rect x="27" y="13" width="10" height="38" rx="4" fill="white"/>
+  <!-- Medical cross — horizontal bar -->
+  <rect x="13" y="27" width="38" height="10" rx="4" fill="white"/>
+
+  <!-- Green AI indicator dot -->
+  <circle cx="50" cy="50" r="9" fill="#06A77D"/>
+  <!-- ECG waveform inside green dot -->
+  <path d="M44.5 50 L46.5 50 L47.5 46.8 L49 53.2 L50 50 L51.5 50 L52 48.5 L53 50 L55.5 50"
+    stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <defs>
+    <radialGradient id="glowGrad" cx="30%" cy="28%" r="60%">
+      <stop offset="0%" stop-color="#00B4D8"/>
+      <stop offset="100%" stop-color="#1A5F7A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

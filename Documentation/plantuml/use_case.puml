@@ -1,0 +1,53 @@
+@startuml use_case_diagram
+skinparam backgroundColor white
+skinparam usecase {
+  BackgroundColor #EEF5FF
+  BorderColor #002B5B
+  ArrowColor #0066B3
+  FontColor #002B5B
+  FontSize 13
+}
+skinparam actor {
+  BackgroundColor #002B5B
+  FontColor #002B5B
+  BorderColor #002B5B
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor #002B5B
+  FontColor #002B5B
+  FontStyle bold
+}
+
+left to right direction
+
+actor User as U
+actor Admin as A
+
+rectangle "MediLingo AI System" {
+  usecase "UC-1: Register Account"        as UC1
+  usecase "UC-2: Login"                   as UC2
+  usecase "UC-3: Submit Medical Query"    as UC3
+  usecase "UC-4: Manage Chat Sessions"    as UC4
+  usecase "UC-5: Use Voice Input"         as UC5
+  usecase "UC-6: Use Voice Output"        as UC6
+  usecase "UC-7: Manage Profile"          as UC7
+  usecase "UC-8: Reset Password"          as UC8
+  usecase "UC-9: Manage Users"            as UC9
+  usecase "UC-10: Ingest Medical Docs"    as UC10
+}
+
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC7
+U --> UC8
+
+A --> UC2
+A --> UC9
+A --> UC10
+
+@enduml

@@ -1,0 +1,44 @@
+@startuml ssd4_sessions
+skinparam sequence {
+  ArrowColor #0066B3
+  LifeLineBorderColor #002B5B
+  LifeLineBackgroundColor #EEF5FF
+  ParticipantBackgroundColor #EEF5FF
+  ParticipantBorderColor #002B5B
+  ParticipantFontColor #002B5B
+  ActorBorderColor #002B5B
+  BackgroundColor white
+}
+skinparam backgroundColor white
+
+title SSD-4: Manage Chat Sessions
+
+actor User
+participant "Frontend\n(React SPA)" as FE
+participant "FastAPI\nBackend" as API
+database "MongoDB" as DB
+
+== Create New Session ==
+User -> FE : click "New Session"
+FE -> API : POST /sessions
+API -> DB : insertSession(user_id)
+DB --> API : SessionDoc { id, title }
+API --> FE : 201 { session }
+FE --> User : show blank chat pane
+
+== Load Existing Session ==
+User -> FE : click session in sidebar
+FE -> API : GET /sessions/{id}
+API -> DB : findSession(id)
+DB --> API : SessionDoc + messages[]
+API --> FE : 200 { session, messages }
+FE --> User : render full message history
+
+== Delete Session ==
+User -> FE : click delete icon
+FE -> API : DELETE /sessions/{id}
+API -> DB : deleteSession(id) + deleteMessages(session_id)
+DB --> API : ack
+API --> FE : 204 No Content
+FE --> User : remove session from sidebar
+@enduml

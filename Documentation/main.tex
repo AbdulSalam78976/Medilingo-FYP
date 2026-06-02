@@ -1,0 +1,536 @@
+\documentclass[12pt, a4paper, oneside]{report}
+
+%=============================================================
+% PACKAGES
+%=============================================================
+\usepackage[top=1.2in, bottom=1.1in, left=1.3in, right=1.1in,
+            headheight=15pt]{geometry}
+\usepackage{newtxtext, newtxmath}        % Times New Roman
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{tocloft}
+\usepackage[hidelinks]{hyperref}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{emptypage}
+\usepackage{mdframed}
+\usepackage{tikz}
+\usetikzlibrary{calc, positioning, arrows.meta, shapes.geometric}
+\usepackage[pages=all]{background}
+
+% ── Code listings ─────────────────────────────────────────────
+\usepackage{listings}
+\usepackage{lstautogobble}
+
+% ── Coloured callout boxes ─────────────────────────────────────
+\usepackage[most]{tcolorbox}
+
+%=============================================================
+% COLOUR PALETTE  (matches the MediLingo AI web application)
+%=============================================================
+\definecolor{primary}  {RGB}{26,  95, 122}   % deep teal-blue   — headings, borders
+\definecolor{accent}   {RGB}{0,  180, 216}   % bright teal      — rules, accents
+\definecolor{medgreen} {RGB}{6,  167, 125}   % medical green    — bullets, badges
+\definecolor{fillbg}   {RGB}{224, 247, 252}  % teal-50          — light fills
+\definecolor{headerbg} {RGB}{200, 238, 248}  % slightly darker  — table headers
+\definecolor{bodytext} {RGB}{46,  53,  64}   % near-black       — body text
+\definecolor{codebg}   {RGB}{236, 248, 252}  % code block bg
+\definecolor{codestr}  {RGB}{6,  167, 125}   % string literals
+\definecolor{codecom}  {RGB}{139, 148, 158}  % comments
+\definecolor{codekw}   {RGB}{26,  95, 122}   % keywords
+
+%=============================================================
+% PAGE BORDER  (drawn on every page behind content)
+%=============================================================
+\backgroundsetup{
+  scale=1, angle=0, opacity=1,
+  contents={%
+    \begin{tikzpicture}[remember picture, overlay]
+      % outer border — thick primary teal-blue
+      \draw[primary, line width=2.2pt]
+        ([xshift= 8mm, yshift=-8mm] current page.north west)
+        rectangle
+        ([xshift=-8mm, yshift= 8mm] current page.south east);
+      % inner border — thin bright teal
+      \draw[accent, line width=0.6pt]
+        ([xshift=10.5mm, yshift=-10.5mm] current page.north west)
+        rectangle
+        ([xshift=-10.5mm, yshift=10.5mm] current page.south east);
+    \end{tikzpicture}
+  }
+}
+
+%=============================================================
+% SPACING
+%=============================================================
+\setstretch{1.5}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt plus 1pt}
+
+%=============================================================
+% CHAPTER TITLE  — full-width primary strip, double rule
+%=============================================================
+\titleformat{\chapter}[display]
+  {\normalfont\centering}
+  {%
+    {\setlength{\fboxsep}{0.4cm}%
+     \colorbox{primary}{%
+       \makebox[\dimexpr\textwidth-2\fboxsep\relax][c]{%
+         \color{white}\bfseries\large\scshape
+         Chapter\ \thechapter
+       }%
+     }}%
+  }
+  {-2pt}
+  {\color{primary}\LARGE\bfseries\MakeUppercase}
+  [%
+    \vspace{6pt}%
+    {\color{primary}\titlerule[2.5pt]}%
+    \vspace{2pt}%
+    {\color{accent}\titlerule[0.7pt]}%
+  ]
+
+\titlespacing*{\chapter}{0pt}{40pt}{28pt}
+
+%-------------------------------------------------------------
+% SECTION  — vertical bar accent + thin rule
+%-------------------------------------------------------------
+\titleformat{\section}
+  {\normalfont\large\bfseries\color{primary}}
+  {{\color{accent}\rule[-3pt]{4pt}{14pt}}\hspace{7pt}\thesection}
+  {0.7em}{}
+  [\vspace{-5pt}{\color{accent}\titlerule[0.6pt]}\vspace{3pt}]
+
+%-------------------------------------------------------------
+% SUBSECTION
+%-------------------------------------------------------------
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries\color{primary}}
+  {{\color{medgreen}\rule[-2pt]{3pt}{10pt}}\hspace{6pt}\thesubsection}
+  {0.7em}{}
+
+%-------------------------------------------------------------
+% SUBSUBSECTION
+%-------------------------------------------------------------
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\itshape\color{accent}}
+  {\thesubsubsection}{1em}{}
+
+%=============================================================
+% HEADERS AND FOOTERS
+%=============================================================
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{2pt}
+\renewcommand{\headrule}{%
+  {\color{primary}\hrule height\headrulewidth width\headwidth}%
+  \vskip-\headrulewidth}
+
+\fancyhead[L]{\small\bfseries\color{primary}\nouppercase{\leftmark}}
+\fancyhead[R]{\small\bfseries\color{accent}\thepage}
+\fancyfoot{}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\headrule}{}
+  \fancyfoot[C]{%
+    {\color{accent}\rule{1.5cm}{0.5pt}}\;%
+    {\small\bfseries\color{primary}\thepage}\;%
+    {\color{accent}\rule{1.5cm}{0.5pt}}%
+  }
+}
+
+%=============================================================
+% TOC / LOF / LOT
+%=============================================================
+\renewcommand{\contentsname}{\color{primary}Table of Contents}
+\renewcommand{\listfigurename}{\color{primary}List of Figures}
+\renewcommand{\listtablename}{\color{primary}List of Tables}
+\renewcommand{\cftchapfont}{\bfseries\color{primary}}
+\renewcommand{\cftchappagefont}{\bfseries\color{primary}}
+\renewcommand{\cftsecfont}{\color{bodytext}}
+\renewcommand{\cftsecpagefont}{\color{bodytext}}
+\setlength{\cftbeforechapskip}{8pt}
+\setlength{\cftbeforesecskip}{2pt}
+
+%=============================================================
+% CAPTIONS
+%=============================================================
+\captionsetup{
+  labelfont     = {bf, color=primary},
+  font          = {small, color=bodytext},
+  labelsep      = colon,
+  justification = centering
+}
+
+%=============================================================
+% BULLET LISTS
+%=============================================================
+\setlist[itemize,1]{label={\color{primary}$\blacksquare$},
+                    leftmargin=2.2em, itemsep=3pt}
+\setlist[itemize,2]{label={\color{medgreen}$\bullet$},
+                    leftmargin=2.2em, itemsep=1pt}
+
+%=============================================================
+% CODE LISTINGS
+%=============================================================
+\lstdefinestyle{medlingo}{
+  backgroundcolor = \color{codebg},
+  basicstyle      = \ttfamily\small,
+  keywordstyle    = \bfseries\color{codekw},
+  stringstyle     = \color{codestr},
+  commentstyle    = \itshape\color{codecom},
+  numberstyle     = \tiny\color{bodytext!60},
+  numbers         = left,
+  numbersep       = 8pt,
+  stepnumber      = 1,
+  frame           = single,
+  framesep        = 4pt,
+  rulecolor       = \color{accent!50},
+  breaklines      = true,
+  breakatwhitespace = true,
+  autogobble      = true,
+  tabsize         = 4,
+  showstringspaces= false,
+  captionpos      = b,
+  xleftmargin     = 10pt,
+  xrightmargin    = 4pt,
+  aboveskip       = 10pt,
+  belowskip       = 6pt,
+}
+\lstset{style=medlingo}
+
+% Language aliases
+\lstdefinelanguage{TypeScript}{
+  language     = [LaTeX]TeX,
+  morekeywords = {const,let,var,function,return,import,export,from,
+                  interface,type,class,extends,implements,async,await,
+                  default,true,false,null,undefined,typeof,void,
+                  string,number,boolean,any,never,unknown},
+  sensitive    = true,
+  morecomment  = [l]{//},
+  morecomment  = [s]{/*}{*/},
+  morestring   = [b]",
+  morestring   = [b]',
+  morestring   = [b]`,
+}
+
+%=============================================================
+% TCOLORBOX CALLOUTS
+%=============================================================
+\tcbuselibrary{skins, breakable}
+
+% \infobox{Title}{Body}
+\newcommand{\infobox}[2]{%
+  \begin{tcolorbox}[
+    enhanced, breakable,
+    colback  = fillbg,
+    colframe = accent,
+    coltitle = white,
+    fonttitle= \bfseries\small,
+    title    = {#1},
+    arc      = 4pt,
+    left     = 8pt, right = 8pt,
+    top      = 6pt, bottom = 6pt,
+    boxrule  = 1.2pt,
+  ]
+  \small #2
+  \end{tcolorbox}%
+}
+
+% \notebox{Body}  — borderless note with green accent bar
+\newcommand{\notebox}[1]{%
+  \begin{tcolorbox}[
+    enhanced, breakable,
+    colback  = fillbg,
+    colframe = medgreen,
+    leftrule = 4pt,
+    rightrule= 0pt,
+    toprule  = 0pt,
+    bottomrule= 0pt,
+    arc      = 0pt,
+    left     = 10pt, right = 8pt,
+    top      = 5pt,  bottom = 5pt,
+  ]
+  \small\color{bodytext} #1
+  \end{tcolorbox}%
+}
+
+% \warnbox{Body}  — amber-tinted warning
+\newcommand{\warnbox}[1]{%
+  \begin{tcolorbox}[
+    enhanced, breakable,
+    colback  = yellow!8!white,
+    colframe = orange!70!red,
+    leftrule = 4pt,
+    rightrule= 0pt,
+    toprule  = 0pt,
+    bottomrule= 0pt,
+    arc      = 0pt,
+    left     = 10pt, right = 8pt,
+    top      = 5pt,  bottom = 5pt,
+  ]
+  \small\color{bodytext} #1
+  \end{tcolorbox}%
+}
+
+%=============================================================
+% FIGURE PLACEHOLDER  \figplaceholder[height]{description}
+%=============================================================
+\newcommand{\figplaceholder}[2][8cm]{%
+  \begin{mdframed}[
+    linecolor=accent, linewidth=1pt,
+    backgroundcolor=fillbg,
+    innertopmargin=14pt, innerbottommargin=14pt,
+    innerleftmargin=12pt, innerrightmargin=12pt,
+    roundcorner=5pt
+  ]
+  \centering
+  {\color{primary}\bfseries\small [Figure Placeholder]}\\[5pt]
+  {\color{accent}\itshape\small #2}\\[2pt]
+  \rule{0pt}{#1}
+  \end{mdframed}%
+}
+
+%=============================================================
+% TABLE COLUMN HEADER  \theader{text}
+%=============================================================
+\newcommand{\theader}[1]{%
+  \cellcolor{primary}\textbf{\color{white}#1}}
+
+% Alternate row tint for long tables
+\newcommand{\rowalt}{\rowcolor{fillbg}}
+
+%=============================================================
+% GRAPHICS PATH
+%=============================================================
+\graphicspath{{figures/}}
+
+%=============================================================
+% PDF METADATA  &  HYPERREF COLOURS
+%=============================================================
+\hypersetup{
+  pdftitle   = {MediLingo AI -- FYP Documentation},
+  pdfauthor  = {[YOUR FULL NAME]},
+  colorlinks = true,
+  linkcolor  = primary,
+  citecolor  = medgreen,
+  urlcolor   = accent,
+}
+
+%#############################################################
+\begin{document}
+\color{bodytext}
+%#############################################################
+
+\pagenumbering{roman}
+
+%-------------------------------------------------------------
+% TITLE PAGE
+%-------------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{0.1cm}
+
+% ── Top decorative strip ──────────────────────────────────
+\noindent
+\begin{tikzpicture}
+  \fill[primary] (0, 0.6cm) rectangle (\linewidth, 1.5cm);
+  \fill[accent]  (0, 0)     rectangle (\linewidth, 0.6cm);
+\end{tikzpicture}
+
+\vspace{0.9cm}
+{\large\color{accent}\scshape Final Year Project Documentation\par}
+\vspace{0.35cm}
+{\color{accent}\rule{0.55\linewidth}{0.6pt}}\par
+
+\vspace{0.75cm}
+{\fontsize{32}{38}\selectfont\bfseries\color{primary} MediLingo AI\par}
+\vspace{0.3cm}
+{\large\bfseries\color{primary} A Cross-Lingual Medical RAG Chatbot\par}
+\vspace{0.15cm}
+{\normalsize\itshape\color{bodytext} Supporting English, Urdu and Roman Urdu\par}
+
+\vspace{1.1cm}
+
+% ── Author info box ───────────────────────────────────────
+\noindent
+\begin{tikzpicture}
+  \fill[fillbg] (0,0) rectangle (\linewidth, 3.2cm);
+  \draw[accent, line width=0.9pt] (0,0) rectangle (\linewidth, 3.2cm);
+  \node[primary, font=\normalsize] at (0.5\linewidth, 2.6cm)
+       {Presented By};
+  \node[primary, font=\large\bfseries] at (0.5\linewidth, 1.8cm)
+       {[YOUR FULL NAME]};
+  \node[bodytext, font=\normalsize] at (0.5\linewidth, 1.05cm)
+       {Reg.\ No:\ [YOUR REGISTRATION NUMBER]};
+\end{tikzpicture}
+
+\vspace{1.0cm}
+{\normalsize\color{bodytext} Supervised By\par}
+\vspace{0.3cm}
+{\large\bfseries\color{primary} [SUPERVISOR NAME]\par}
+{\normalsize\color{bodytext} [SUPERVISOR DESIGNATION]\par}
+
+\vfill
+
+% University logo — add figures/uni_logo.png and uncomment:
+% \includegraphics[width=2.8cm]{uni_logo}\\[0.4cm]
+
+{\normalsize\color{bodytext} Department of [DEPARTMENT NAME]\par}
+{\large\bfseries\color{primary} [UNIVERSITY NAME], [CITY]\par}
+{\normalsize\color{bodytext} ([START YEAR]--[END YEAR])\par}
+
+\vspace{0.4cm}
+
+% ── Bottom decorative strip ───────────────────────────────
+\noindent
+\begin{tikzpicture}
+  \fill[accent]  (0, 0.5cm) rectangle (\linewidth, 0.85cm);
+  \fill[primary] (0, 0)     rectangle (\linewidth, 0.5cm);
+\end{tikzpicture}
+
+\end{titlepage}
+
+%-------------------------------------------------------------
+% CERTIFICATE OF APPROVAL
+%-------------------------------------------------------------
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\begin{tikzpicture}
+  \fill[primary] (0,0) rectangle (\linewidth, 1.5cm);
+  \fill[accent]  (0,-0.3cm) rectangle (\linewidth, 0);
+  \node[white, font=\Large\bfseries] at (0.5\linewidth, 0.75cm)
+       {CERTIFICATE OF APPROVAL};
+\end{tikzpicture}
+
+\vspace{2.5cm}
+
+\noindent
+\textbf{\color{primary}Supervisor:}\quad\underline{\hspace{7cm}}\vspace{10pt}
+
+\noindent\textbf{[SUPERVISOR NAME]}\newline
+[SUPERVISOR DESIGNATION]\newline
+Department of [DEPARTMENT NAME]\newline
+[UNIVERSITY NAME], [CITY].
+
+\vspace{2cm}
+
+\noindent
+\textbf{\color{primary}Chairperson:}\quad\underline{\hspace{7cm}}\vspace{10pt}
+
+\noindent\textbf{[CHAIRPERSON NAME]}\newline
+[CHAIRPERSON DESIGNATION]\newline
+Department of [DEPARTMENT NAME]\newline
+[UNIVERSITY NAME], [CITY].
+
+\vspace{2cm}
+\noindent
+\textbf{\color{primary}Date:}\quad\underline{\hspace{5cm}}
+
+%-------------------------------------------------------------
+% ACKNOWLEDGEMENT
+%-------------------------------------------------------------
+\clearpage
+\chapter*{Acknowledgement}
+\addcontentsline{toc}{chapter}{ACKNOWLEDGEMENT}
+
+[Write your acknowledgement here in your own words.]
+
+\vspace{1.5cm}
+\hfill\textbf{\color{primary}[YOUR FULL NAME]}
+
+%-------------------------------------------------------------
+% ABSTRACT
+%-------------------------------------------------------------
+\clearpage
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{ABSTRACT}
+
+Pakistan is home to over 230 million people, the majority of whom communicate in Urdu or
+Roman Urdu as their primary language. When seeking medical guidance outside a clinical
+setting --- to understand a diagnosis, research a medication or evaluate symptoms --- this
+population is largely underserved. The global landscape of AI-powered medical tools is
+built almost exclusively around English: queries are expected in English, knowledge bases
+are indexed in English and responses are generated in English. A Urdu-speaking user asking
+about drug interactions or post-operative care is either met with silence, an inaccurate
+machine translation, or a response from a general-purpose model that is not anchored in
+verified clinical knowledge and may fabricate medical details.
+
+\textbf{MediLingo AI} is a web-based medical chatbot built on a Retrieval-Augmented
+Generation (RAG) architecture that natively handles queries in English, Urdu and Roman
+Urdu. The backend is developed in Python using FastAPI and integrates three core
+components: a ChromaDB vector store that indexes semantically chunked medical PDF
+documents, a \texttt{sentence-transformers} embedding model (\texttt{all-MiniLM-L6-v2})
+for dense passage retrieval, and the Groq-hosted LLaMA~3.3-70b large language model for
+response generation. The React~19 / TypeScript / Vite frontend provides a persistent,
+session-based chat interface with voice input and output via the Web Speech API.
+
+A central design decision is the \textit{language-prefix system}: the user's chosen
+language is prepended to every query as a natural-language instruction before the query
+reaches the LLM, while the embedding pipeline strips this prefix so that vector search
+operates on the semantic content of the medical question rather than the language tag.
+Authentication uses a JWT dual-token scheme --- short-lived access tokens held in memory
+and long-lived refresh tokens stored in HTTP-only cookies --- with all session history
+persisted in MongoDB.
+
+The system demonstrates that a multilingual, domain-grounded medical assistant is
+achievable using lightweight open-source models, closing a practical healthcare information
+gap for tens of millions of Urdu and Roman Urdu speakers.
+
+%-------------------------------------------------------------
+% TABLE OF CONTENTS
+%-------------------------------------------------------------
+\clearpage
+\tableofcontents
+
+%-------------------------------------------------------------
+% LIST OF FIGURES
+%-------------------------------------------------------------
+\clearpage
+\listoffigures
+\addcontentsline{toc}{chapter}{LIST OF FIGURES}
+
+%-------------------------------------------------------------
+% LIST OF TABLES
+%-------------------------------------------------------------
+\clearpage
+\listoftables
+\addcontentsline{toc}{chapter}{LIST OF TABLES}
+
+%-------------------------------------------------------------
+% MAIN MATTER
+%-------------------------------------------------------------
+\clearpage
+\pagenumbering{arabic}
+
+\input{chapters/chapter1}
+\input{chapters/chapter2}
+\input{chapters/chapter3}
+\input{chapters/chapter4}
+
+%-------------------------------------------------------------
+% REFERENCES
+%-------------------------------------------------------------
+\clearpage
+\addcontentsline{toc}{chapter}{REFERENCES}
+\bibliographystyle{ieeetr}
+\bibliography{references}
+
+\end{document}
