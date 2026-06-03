@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import connect_db, close_db, get_database
 from app.routers import auth, sessions, query, admin
+from app.routers import tts as tts_router
 from app.services.rag_service import init_rag, shutdown_rag
 
 logging.basicConfig(
@@ -118,6 +119,7 @@ app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(query.router)
 app.include_router(admin.router)
+app.include_router(tts_router.router)
 
 # ── Global exception handler ──────────────────────────────────────────────────
 
