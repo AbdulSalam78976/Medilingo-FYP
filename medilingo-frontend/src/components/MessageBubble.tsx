@@ -101,6 +101,7 @@ interface MessageBubbleProps {
   message: Message;
   voiceSynthSupported: boolean;
   isSpeakingThis: boolean;
+  isLoadingThis: boolean;
   onSpeak: (text: string) => void;
   onStopSpeaking: () => void;
 }
@@ -132,6 +133,7 @@ function AssistantMessage({
   message,
   voiceSynthSupported,
   isSpeakingThis,
+  isLoadingThis,
   onSpeak,
   onStopSpeaking,
 }: MessageBubbleProps) {
@@ -198,20 +200,29 @@ function AssistantMessage({
             {voiceSynthSupported && (
               <button
                 type="button"
-                onClick={() => isSpeakingThis ? onStopSpeaking() : onSpeak(message.text)}
-                aria-label={isSpeakingThis ? 'Stop speaking' : 'Read aloud'}
+                onClick={() => (isSpeakingThis || isLoadingThis) ? onStopSpeaking() : onSpeak(message.text)}
+                disabled={isLoadingThis && !isSpeakingThis}
+                aria-label={isSpeakingThis ? 'Stop speaking' : isLoadingThis ? 'Loading audio…' : 'Read aloud'}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xs text-[11px] font-medium transition-all ${
                   isSpeakingThis
                     ? 'bg-blue-50 text-blue border border-blue/20'
-                    : 'text-ink-4 hover:text-blue hover:bg-blue-50/60 border border-transparent hover:border-blue/20'
+                    : isLoadingThis
+                      ? 'bg-teal-50/60 text-teal-600 border border-teal/20 cursor-wait'
+                      : 'text-ink-4 hover:text-blue hover:bg-blue-50/60 border border-transparent hover:border-blue/20'
                 }`}
               >
                 {isSpeakingThis ? (
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
+                ) : isLoadingThis ? (
+                  /* Spinner */
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    strokeLinecap="round" style={{ animation: 'spin 0.7s linear infinite' }}>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
                 ) : (
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M11 5 6 9H3v6h3l5 4V5ZM16 9a4 4 0 0 1 0 6" /></svg>
                 )}
-                {isSpeakingThis ? 'Stop' : 'Listen'}
+                {isSpeakingThis ? 'Stop' : isLoadingThis ? 'Loading…' : 'Listen'}
               </button>
             )}
 

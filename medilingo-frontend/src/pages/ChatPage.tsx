@@ -23,6 +23,7 @@ export function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [loadingMessageId,  setLoadingMessageId]  = useState<string | null>(null);
 
   const [streamingState, setStreamingState] = useState<{
     text: string;
@@ -55,7 +56,7 @@ export function ChatPage() {
   const autoPlay = useVoiceSettingsStore(s => s.autoPlay);
 
   const { isSupported: voiceInputSupported, isListening, transcript, startListening, stopListening } = useVoiceInput();
-  const { isSupported: voiceSynthSupported, isSpeaking, speak, stop: stopSpeaking } = useVoiceOutput();
+  const { isSupported: voiceSynthSupported, isSpeaking, isLoading: isTTSLoading, speak, stop: stopSpeaking } = useVoiceOutput();
 
   // ── Effects ─────────────────────────────────────────────────────────────────
   useEffect(() => { if (transcript) setInputValue(transcript); }, [transcript]);
@@ -189,11 +190,29 @@ export function ChatPage() {
   }, [retryLast, postMessage, activeSessionId]);
 
   const handleSpeak = useCallback((messageId: string, text: string) => {
-    setSpeakingMessageId(messageId);
+    setLoadingMessageId(messageId);
+    setSpeakingMessageId(null);
     speak(text);
   }, [speak]);
 
-  const handleStopSpeaking = useCallback(() => { stopSpeaking(); setSpeakingMessageId(null); }, [stopSpeaking]);
+  // Sync loadingMessageId / speakingMessageId with hook state
+  useEffect(() => {
+    if (isTTSLoading) return;              // still loading — keep loadingMessageId
+    if (isSpeaking) {
+      // audio started — move id from loading → speaking
+      setLoadingMessageId(prev => { setSpeakingMessageId(prev); return null; });
+    } else {
+      // done — clear both
+      setSpeakingMessageId(null);
+      setLoadingMessageId(null);
+    }
+  }, [isTTSLoading, isSpeaking]);
+
+  const handleStopSpeaking = useCallback(() => {
+    stopSpeaking();
+    setSpeakingMessageId(null);
+    setLoadingMessageId(null);
+  }, [stopSpeaking]);
 
   const handleSuggestedQuestion = useCallback((q: string) => { setInputValue(q); }, []);
 
@@ -286,6 +305,7 @@ export function ChatPage() {
           lastError={queryError}
           voiceSynthSupported={voiceSynthSupported}
           speakingMessageId={speakingMessageId}
+          loadingMessageId={loadingMessageId}
           onSpeak={handleSpeak}
           onStopSpeaking={handleStopSpeaking}
           onRetry={handleRetry}

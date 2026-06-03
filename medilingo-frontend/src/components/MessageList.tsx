@@ -167,6 +167,7 @@ interface MessageListProps {
   lastError: AppError | null;
   voiceSynthSupported: boolean;
   speakingMessageId: string | null;
+  loadingMessageId: string | null;
   onSpeak: (messageId: string, text: string) => void;
   onStopSpeaking: () => void;
   onRetry: () => void;
@@ -181,6 +182,7 @@ export function MessageList({
   lastError,
   voiceSynthSupported,
   speakingMessageId,
+  loadingMessageId,
   onSpeak,
   onStopSpeaking,
   onRetry,
@@ -221,6 +223,7 @@ export function MessageList({
                 message={message}
                 voiceSynthSupported={voiceSynthSupported}
                 isSpeakingThis={speakingMessageId === message.id}
+                isLoadingThis={loadingMessageId === message.id}
                 onSpeak={(text) => onSpeak(message.id, text)}
                 onStopSpeaking={onStopSpeaking}
               />

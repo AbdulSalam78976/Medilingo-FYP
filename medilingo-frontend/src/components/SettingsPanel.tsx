@@ -1,3 +1,5 @@
+import { useVoiceSettingsStore } from '../hooks/useVoiceSettingsStore';
+import type { VoicePersona } from '../hooks/useVoiceSettingsStore';
 import type { QueryConfig } from '../types/index';
 
 interface SettingsPanelProps {
@@ -52,7 +54,20 @@ function SliderRow({
   );
 }
 
+const PERSONAS: { id: VoicePersona; label: string; sub: string }[] = [
+  { id: 'Saira', label: 'Saira', sub: 'Female · Urdu / English' },
+  { id: 'Bilal', label: 'Bilal', sub: 'Male · Urdu / English'   },
+  { id: 'Aria',  label: 'Aria',  sub: 'Female · English'        },
+];
+
 export function SettingsPanel({ isOpen, onClose, config, onConfigChange }: SettingsPanelProps) {
+  const persona    = useVoiceSettingsStore(s => s.persona);
+  const speed      = useVoiceSettingsStore(s => s.speed);
+  const autoPlay   = useVoiceSettingsStore(s => s.autoPlay);
+  const setPersona = useVoiceSettingsStore(s => s.setPersona);
+  const setSpeed   = useVoiceSettingsStore(s => s.setSpeed);
+  const setAutoPlay= useVoiceSettingsStore(s => s.setAutoPlay);
+
   return (
     <>
       {/* Backdrop */}
@@ -143,6 +158,84 @@ export function SettingsPanel({ isOpen, onClose, config, onConfigChange }: Setti
                     config.use_advanced ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
+              </button>
+            </div>
+          </div>
+
+          {/* ── Voice settings ───────────────────────────────────── */}
+          <div className="border-t border-line pt-5 flex flex-col gap-4">
+            <p className="text-[12px] font-semibold text-ink-3 uppercase tracking-[.06em]">
+              Voice
+            </p>
+
+            {/* Persona picker */}
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[13px] font-medium text-ink">Voice persona</p>
+              <div className="flex flex-col gap-1.5 mt-1">
+                {PERSONAS.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPersona(p.id)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md border text-left transition-colors ${
+                      persona === p.id
+                        ? 'border-blue bg-blue-50 text-blue'
+                        : 'border-line text-ink-3 hover:border-line-strong hover:text-ink hover:bg-paper-2'
+                    }`}
+                  >
+                    {/* Avatar icon */}
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold ${
+                      persona === p.id ? 'bg-blue text-white' : 'bg-line text-ink-4'
+                    }`}>
+                      {p.id[0]}
+                    </div>
+                    <div>
+                      <div className="text-[13px] font-medium leading-none">{p.label}</div>
+                      <div className="text-[11px] mt-0.5 opacity-70">{p.sub}</div>
+                    </div>
+                    {persona === p.id && (
+                      <svg className="ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Speed slider */}
+            <SliderRow
+              label="Speech speed"
+              description="How fast the voice reads the response"
+              value={speed}
+              min={0.5}
+              max={2.0}
+              step={0.1}
+              display={speed === 1.0 ? 'Normal' : speed < 1 ? 'Slow' : 'Fast'}
+              onChange={setSpeed}
+            />
+
+            {/* Auto-play toggle */}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-medium text-ink">Auto-play responses</p>
+                <p className="text-[11px] text-ink-4 mt-0.5 leading-snug">
+                  Speak every AI response automatically
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoPlay}
+                onClick={() => setAutoPlay(!autoPlay)}
+                className={`flex-shrink-0 relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue/30 ${
+                  autoPlay ? 'bg-blue' : 'bg-line-strong'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                  autoPlay ? 'translate-x-5' : 'translate-x-0'
+                }`} />
               </button>
             </div>
           </div>

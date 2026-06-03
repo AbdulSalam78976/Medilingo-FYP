@@ -85,6 +85,10 @@
 }
 
 /* ── Keyframes ───────────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes ecgDraw {
   0%   { stroke-dashoffset: 600; }
   100% { stroke-dashoffset: 0; }

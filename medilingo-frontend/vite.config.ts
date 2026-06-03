@@ -65,6 +65,7 @@ export default defineConfig({
       ...adminProxy,
       ...proxy('/symptom-check'),
       ...proxy('/drug-interactions'),
+      ...proxy('/tts'),
     },
   },
 })
